@@ -1,0 +1,3565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Branchboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@500&display=swap">
+
+<style>
+/* ============================================================
+   Branchboard — tokens
+   Palette: cool graphite paper, ink-teal chrome accent,
+   eight branch pigments that carry all the colour.
+   ============================================================ */
+:root{
+  --paper:#EDF1F1;
+  --paper-2:#E4EAEA;
+  --surface:#FFFFFF;
+  --surface-2:#F5F8F8;
+  --surface-3:#EAF0F0;
+  --line:#DBE3E3;
+  --line-strong:#BFCBCB;
+  --ink:#0F1719;
+  --ink-2:#44535A;
+  --ink-3:#7C8B91;
+  --dot:#C6D1D1;
+  --accent:#0B7A6B;
+  --on-color:#FFFFFF;
+  --accent-soft:#E1F1EE;
+  --danger:#C33B4E;
+  --shadow-1:0 1px 2px rgba(15,23,25,.06), 0 2px 6px rgba(15,23,25,.05);
+  --shadow-2:0 2px 4px rgba(15,23,25,.06), 0 10px 26px rgba(15,23,25,.10);
+  --shadow-3:0 10px 40px rgba(15,23,25,.16);
+  --node-shadow:0 1px 1px rgba(15,23,25,.05), 0 2px 5px rgba(15,23,25,.07);
+
+  --pal-violet:#6C55E0;
+  --pal-blue:#2276CE;
+  --pal-teal:#0E9184;
+  --pal-green:#5B8F23;
+  --pal-amber:#C4761A;
+  --pal-rose:#D33F60;
+  --pal-plum:#94459F;
+  --pal-slate:#566A78;
+
+  --font-display:"Bricolage Grotesque","Public Sans",system-ui,sans-serif;
+  --font-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1416;
+    --paper-2:#0A0F11;
+    --surface:#171F22;
+    --surface-2:#1D272A;
+    --surface-3:#243033;
+    --line:#293639;
+    --line-strong:#3D4E52;
+    --ink:#E8EEEF;
+    --ink-2:#A8B7BB;
+    --ink-3:#76888D;
+    --dot:#263336;
+    --accent:#3FC7B0;
+    --on-color:#0B1113;
+    --accent-soft:#12312D;
+    --danger:#E2687C;
+    --shadow-1:0 1px 2px rgba(0,0,0,.4);
+    --shadow-2:0 2px 4px rgba(0,0,0,.35), 0 10px 26px rgba(0,0,0,.45);
+    --shadow-3:0 10px 40px rgba(0,0,0,.55);
+    --node-shadow:0 1px 2px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.35);
+    --pal-violet:#9B87FF;
+    --pal-blue:#5CA8F0;
+    --pal-teal:#3AC4B2;
+    --pal-green:#9BCF57;
+    --pal-amber:#E5A24C;
+    --pal-rose:#F2748F;
+    --pal-plum:#C77DD1;
+    --pal-slate:#8FA3AF;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1416;
+  --paper-2:#0A0F11;
+  --surface:#171F22;
+  --surface-2:#1D272A;
+  --surface-3:#243033;
+  --line:#293639;
+  --line-strong:#3D4E52;
+  --ink:#E8EEEF;
+  --ink-2:#A8B7BB;
+  --ink-3:#76888D;
+  --dot:#263336;
+  --accent:#3FC7B0;
+  --on-color:#0B1113;
+  --accent-soft:#12312D;
+  --danger:#E2687C;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 2px 4px rgba(0,0,0,.35), 0 10px 26px rgba(0,0,0,.45);
+  --shadow-3:0 10px 40px rgba(0,0,0,.55);
+  --node-shadow:0 1px 2px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.35);
+  --pal-violet:#9B87FF;
+  --pal-blue:#5CA8F0;
+  --pal-teal:#3AC4B2;
+  --pal-green:#9BCF57;
+  --pal-amber:#E5A24C;
+  --pal-rose:#F2748F;
+  --pal-plum:#C77DD1;
+  --pal-slate:#8FA3AF;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+::selection{background:color-mix(in srgb, var(--accent) 28%, transparent)}
+
+/* ---------- shared chrome bits ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  height:34px;padding:0 13px;border-radius:9px;
+  background:var(--surface);border:1px solid var(--line);
+  color:var(--ink);font-size:13.5px;font-weight:600;
+  box-shadow:var(--shadow-1);
+  transition:background .13s ease, border-color .13s ease, transform .13s ease;
+  white-space:nowrap;
+}
+.btn:hover{background:var(--surface-2);border-color:var(--line-strong)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+:root[data-theme="dark"] .btn.primary,
+:root:not([data-theme="light"]) .btn.primary{color:#06201C}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .btn.primary{color:#fff}}
+.btn.primary:hover{background:color-mix(in srgb, var(--accent) 88%, var(--ink))}
+.btn.ghost{background:transparent;border-color:transparent;box-shadow:none}
+.btn.ghost:hover{background:var(--surface-2);border-color:var(--line)}
+.btn.icon{width:34px;padding:0;justify-content:center}
+.btn[disabled]{opacity:.38;pointer-events:none}
+.btn svg{width:16px;height:16px;flex:none}
+
+.kbd{
+  font-family:var(--font-mono);font-size:10.5px;font-weight:500;
+  padding:2px 5px;border-radius:5px;
+  background:var(--surface-3);color:var(--ink-2);
+  border:1px solid var(--line);
+  white-space:nowrap;
+}
+
+/* ---------- view switching ---------- */
+.view{position:fixed;inset:0;display:none}
+.view.on{display:block}
+
+/* ============================================================
+   HOME — the shelf of boards
+   ============================================================ */
+#home{overflow:auto;background:var(--paper)}
+#home::before{
+  content:"";position:fixed;inset:0;pointer-events:none;
+  background:
+    radial-gradient(1100px 460px at 12% -8%, color-mix(in srgb, var(--pal-teal) 12%, transparent), transparent 70%),
+    radial-gradient(900px 420px at 92% 4%, color-mix(in srgb, var(--pal-violet) 11%, transparent), transparent 68%);
+}
+.home-inner{position:relative;max-width:1080px;margin:0 auto;padding:52px 32px 90px}
+
+.wordmark{display:flex;align-items:center;gap:11px}
+.mark{width:30px;height:30px;flex:none}
+.wordmark h1{
+  font-family:var(--font-display);font-size:26px;font-weight:800;
+  letter-spacing:-.022em;margin:0;line-height:1;
+}
+.home-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.home-lede{margin:14px 0 0;max-width:46ch;color:var(--ink-2);font-size:15px}
+.home-actions{display:flex;gap:9px;align-items:center}
+
+.shelf-label{
+  display:flex;align-items:baseline;gap:10px;
+  margin:44px 0 16px;padding-bottom:11px;border-bottom:1px solid var(--line);
+}
+.shelf-label h2{
+  font-family:var(--font-display);font-size:13px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.11em;color:var(--ink-2);margin:0;
+}
+.shelf-label .count{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.store-note{
+  margin-left:auto;display:flex;align-items:center;gap:7px;
+  font-family:var(--font-mono);font-size:11px;color:var(--ink-3);
+  max-width:52ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.store-note .dot{
+  width:6px;height:6px;border-radius:50%;flex:none;
+  background:var(--ink-3);box-shadow:0 0 0 3px color-mix(in srgb,var(--ink-3) 18%,transparent);
+}
+.store-note .dot.ok{
+  background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent);
+}
+@media (max-width:640px){ .store-note{display:none} }
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:18px}
+
+.card{
+  position:relative;display:flex;flex-direction:column;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  overflow:hidden;cursor:pointer;text-align:left;
+  box-shadow:var(--shadow-1);
+  transition:transform .16s cubic-bezier(.2,.8,.3,1), box-shadow .16s ease, border-color .16s ease;
+}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-2);border-color:var(--line-strong)}
+.card-preview{
+  height:132px;background:var(--surface-2);
+  border-bottom:1px solid var(--line);
+  display:block;position:relative;overflow:hidden;
+}
+.card-preview svg{position:absolute;inset:0;width:100%;height:100%}
+.card-empty{
+  display:flex;align-items:center;justify-content:center;height:100%;
+  color:var(--ink-3);font-size:12.5px;letter-spacing:.03em;
+}
+.card-body{padding:13px 15px 15px;display:flex;flex-direction:column;gap:5px}
+.card-title{
+  font-family:var(--font-display);font-size:16.5px;font-weight:700;
+  letter-spacing:-.012em;line-height:1.25;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.card-meta{
+  display:flex;gap:9px;align-items:center;
+  font-family:var(--font-mono);font-size:11px;color:var(--ink-3);
+}
+.card-meta .sep{opacity:.5}
+.card-menu{
+  position:absolute;top:9px;right:9px;width:28px;height:28px;
+  display:flex;align-items:center;justify-content:center;border-radius:8px;
+  background:color-mix(in srgb, var(--surface) 84%, transparent);
+  backdrop-filter:blur(6px);
+  border:1px solid var(--line);color:var(--ink-2);
+  opacity:0;transition:opacity .14s ease;
+}
+.card:hover .card-menu, .card-menu:focus-visible{opacity:1}
+.card-menu:hover{background:var(--surface);color:var(--ink)}
+.card-menu svg{width:15px;height:15px}
+
+.card.new{
+  align-items:center;justify-content:center;min-height:212px;
+  border-style:dashed;border-width:1.5px;background:transparent;box-shadow:none;
+  color:var(--ink-2);gap:9px;
+}
+.card.new:hover{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 5%,transparent)}
+.card.new svg{width:22px;height:22px}
+.card.new span{font-size:13.5px;font-weight:600}
+
+/* dropdown menu */
+.menu{
+  position:fixed;z-index:80;min-width:172px;padding:5px;
+  background:var(--surface);border:1px solid var(--line);border-radius:11px;
+  box-shadow:var(--shadow-3);display:none;
+}
+.menu.on{display:block}
+.menu button{
+  display:flex;align-items:center;gap:9px;width:100%;
+  padding:7px 9px;border-radius:7px;font-size:13.5px;font-weight:500;color:var(--ink);
+}
+.menu button:hover{background:var(--surface-2)}
+.menu button.danger{color:var(--danger)}
+.menu button.danger:hover{background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.menu button svg{width:15px;height:15px;opacity:.75}
+.menu hr{border:none;border-top:1px solid var(--line);margin:5px 3px}
+
+/* ============================================================
+   EDITOR — canvas, nodes, links
+   ============================================================ */
+#editor{background:var(--paper)}
+#canvas{
+  position:absolute;inset:0;overflow:hidden;
+  background-image:radial-gradient(var(--dot) 1.1px, transparent 1.1px);
+  background-size:22px 22px;
+  cursor:default;
+  touch-action:none;
+}
+#canvas.panning{cursor:grabbing}
+#canvas.panready{cursor:grab}
+#world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+
+.tree{position:absolute;left:0;top:0}
+.tree > svg{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
+.link{fill:none;stroke-linecap:round;stroke:color-mix(in srgb, var(--c) 62%, transparent)}
+
+.node{
+  --c:var(--ink);
+  position:absolute;left:0;top:0;
+  width:max-content;
+  display:flex;align-items:center;gap:6px;
+  max-width:214px;
+  cursor:default;
+  user-select:none;
+  transition:box-shadow .12s ease, background .12s ease;
+}
+.node-label{
+  outline:none;
+  overflow-wrap:break-word;
+  white-space:pre-wrap;
+  min-width:14px;
+}
+/* while a box is being typed into, let the caret and selection work
+   (contentEditable is set to "plaintext-only", so an attribute selector
+   looking for "true" would quietly miss) */
+.node.editing, .node.editing .node-label{
+  cursor:text;
+  user-select:text;
+  -webkit-user-select:text;
+}
+.node.editing{box-shadow:0 0 0 2px var(--paper), 0 0 0 4px var(--accent), var(--node-shadow)}
+
+/* depth 0 — the trunk */
+.node.d0{
+  padding:10px 16px;border-radius:12px;
+  background:var(--c);
+  color:var(--on-color);
+  font-size:15.5px;font-weight:700;letter-spacing:-.01em;line-height:1.32;
+  box-shadow:var(--node-shadow);
+  max-width:230px;
+}
+/* depth 1 — main branches */
+.node.d1{
+  padding:7px 13px;border-radius:9px;
+  background:color-mix(in srgb, var(--c) 13%, var(--surface));
+  border:1.5px solid color-mix(in srgb, var(--c) 46%, transparent);
+  color:color-mix(in srgb, var(--c) 62%, var(--ink));
+  font-size:14px;font-weight:600;line-height:1.36;
+  box-shadow:var(--node-shadow);
+}
+/* depth 2+ — twigs: text riding a coloured rule */
+.node.dn{
+  padding:3px 3px 4px;
+  border-bottom:2px solid color-mix(in srgb, var(--c) 52%, transparent);
+  border-radius:2px;
+  color:var(--ink);
+  font-size:13.5px;font-weight:500;line-height:1.4;
+  max-width:196px;
+}
+.node.dn.deep{font-size:13px;color:var(--ink-2);font-weight:400}
+
+.node:hover{box-shadow:0 0 0 3px color-mix(in srgb, var(--c) 16%, transparent), var(--node-shadow)}
+.node.sel{box-shadow:0 0 0 2px var(--paper), 0 0 0 4px var(--accent), var(--node-shadow)}
+.node.sel.dn{border-radius:5px;background:color-mix(in srgb, var(--accent) 8%, transparent)}
+.node.drop{box-shadow:0 0 0 2px var(--paper), 0 0 0 4px var(--pal-amber)}
+.node.dragging{z-index:30;cursor:grabbing;opacity:.85}
+
+.node .dot-note{
+  position:absolute;top:-4px;right:-4px;
+  width:6px;height:6px;border-radius:50%;
+  background:color-mix(in srgb, var(--c) 75%, var(--ink));
+  opacity:.8;
+}
+.toggle{
+  position:absolute;top:50%;
+  width:17px;height:17px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface);border:1.5px solid color-mix(in srgb, var(--c) 55%, transparent);
+  color:color-mix(in srgb, var(--c) 70%, var(--ink));
+  font-family:var(--font-mono);font-size:9px;font-weight:500;line-height:1;
+  opacity:0;transition:opacity .12s ease;z-index:5;
+}
+.toggle.right{right:-9px;transform:translate(100%,-50%)}
+.toggle.left{left:-9px;transform:translate(-100%,-50%)}
+.node:hover .toggle,.node.sel .toggle{opacity:1}
+.toggle.shown{opacity:1;background:color-mix(in srgb, var(--c) 16%, var(--surface))}
+
+#measure{
+  position:absolute;left:-99999px;top:0;visibility:hidden;pointer-events:none;
+  white-space:pre-wrap;
+}
+
+/* ---------- floating chrome ---------- */
+.bar{
+  position:absolute;z-index:20;display:flex;align-items:center;gap:6px;
+  padding:6px;border-radius:13px;
+  background:color-mix(in srgb, var(--surface) 90%, transparent);
+  backdrop-filter:blur(14px) saturate(1.4);
+  border:1px solid var(--line);box-shadow:var(--shadow-2);
+}
+#topbar{top:16px;left:16px;max-width:calc(100% - 32px)}
+#board-name{
+  font-family:var(--font-display);font-size:15px;font-weight:700;letter-spacing:-.012em;
+  padding:5px 9px;border-radius:8px;outline:none;min-width:40px;max-width:290px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#board-name:hover{background:var(--surface-2)}
+#board-name:focus{background:var(--surface-2);box-shadow:0 0 0 2px var(--accent)}
+.divider{width:1px;height:20px;background:var(--line);margin:0 3px;flex:none}
+#saved{
+  font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);
+  padding-right:5px;opacity:0;transition:opacity .3s ease;white-space:nowrap;
+}
+#saved.on{opacity:1}
+
+#zoombar{bottom:16px;left:16px}
+#zoomlevel{
+  font-family:var(--font-mono);font-size:11.5px;color:var(--ink-2);
+  min-width:44px;text-align:center;
+}
+
+#addbar{bottom:16px;left:50%;transform:translateX(-50%)}
+#addbar .btn{height:32px}
+
+/* ---------- inspector ---------- */
+#inspector{
+  position:absolute;top:16px;right:16px;bottom:16px;width:244px;z-index:20;
+  display:flex;flex-direction:column;
+  background:color-mix(in srgb, var(--surface) 93%, transparent);
+  backdrop-filter:blur(14px) saturate(1.4);
+  border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-2);
+  overflow:hidden;
+  transform:translateX(calc(100% + 22px));opacity:0;pointer-events:none;
+  transition:transform .2s cubic-bezier(.2,.8,.3,1), opacity .2s ease;
+}
+#inspector.on{transform:none;opacity:1;pointer-events:auto}
+.insp-head{
+  padding:13px 14px 11px;border-bottom:1px solid var(--line);
+}
+.insp-kicker{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-3);
+}
+.insp-title{font-size:14px;font-weight:600;line-height:1.35;margin-top:3px;overflow-wrap:break-word}
+.insp-body{padding:13px 14px;display:flex;flex-direction:column;gap:16px;overflow:auto}
+.field{display:flex;flex-direction:column;gap:8px}
+.field > label{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-3);
+}
+.swatches{display:grid;grid-template-columns:repeat(9,1fr);gap:5px}
+.sw{
+  aspect-ratio:1;border-radius:6px;background:var(--c);
+  border:1.5px solid transparent;
+  transition:transform .12s ease;
+}
+.sw:hover{transform:scale(1.16)}
+.sw.on{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--ink-2)}
+.sw.auto{background:repeating-linear-gradient(45deg,var(--line) 0 3px,var(--surface-3) 3px 6px)}
+.seg{display:flex;background:var(--surface-3);border-radius:9px;padding:3px;gap:3px}
+.seg button{
+  flex:1;height:27px;border-radius:6px;font-size:12.5px;font-weight:600;color:var(--ink-2);
+}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-1)}
+#note{
+  width:100%;min-height:70px;resize:vertical;font:inherit;font-size:13px;
+  padding:8px 9px;border-radius:9px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);outline:none;
+}
+#note:focus{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
+.insp-foot{
+  margin-top:auto;padding:11px 14px;border-top:1px solid var(--line);
+  display:flex;flex-direction:column;gap:7px;
+}
+.insp-row{display:flex;gap:7px}
+.insp-row .btn{flex:1;justify-content:center;height:31px;font-size:12.5px}
+.btn.danger{color:var(--danger)}
+.btn.danger:hover{background:color-mix(in srgb,var(--danger) 10%,transparent);border-color:color-mix(in srgb,var(--danger) 34%,transparent)}
+.stat{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+
+/* ---------- empty canvas hint ---------- */
+#hint{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  pointer-events:none;z-index:5;
+}
+#hint .hint-card{
+  text-align:center;max-width:370px;padding:26px 30px;
+  background:color-mix(in srgb, var(--surface) 74%, transparent);
+  border:1px dashed var(--line-strong);border-radius:16px;
+}
+#hint h3{font-family:var(--font-display);font-size:19px;font-weight:700;margin:0 0 7px;letter-spacing:-.015em}
+#hint p{margin:0;color:var(--ink-2);font-size:13.5px;line-height:1.75}
+
+/* ---------- shortcuts sheet ---------- */
+#sheet{
+  position:fixed;inset:0;z-index:90;display:none;
+  align-items:center;justify-content:center;padding:24px;
+  background:color-mix(in srgb, var(--paper-2) 70%, transparent);
+  backdrop-filter:blur(3px);
+}
+#sheet.on{display:flex}
+.sheet-inner{
+  width:min(580px,100%);max-height:82vh;overflow:auto;
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  box-shadow:var(--shadow-3);padding:24px 26px 26px;
+}
+.sheet-inner h3{font-family:var(--font-display);font-size:20px;margin:0 0 3px;letter-spacing:-.017em}
+.sheet-inner .sub{color:var(--ink-2);font-size:13.5px;margin:0 0 20px}
+.keys{display:grid;grid-template-columns:1fr 1fr;gap:22px 30px}
+.keys h4{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 9px;padding-bottom:7px;border-bottom:1px solid var(--line);
+}
+.keys ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.keys li{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px}
+.keys li span:first-child{color:var(--ink-2)}
+@media (max-width:560px){.keys{grid-template-columns:1fr}}
+
+/* ---------- icons and links on a node ---------- */
+.node-icon{
+  flex:none;line-height:1;font-size:15px;
+  font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;
+}
+.node.d0 .node-icon{font-size:16px}
+.node.dn .node-icon{font-size:13.5px}
+.node-link{
+  flex:none;font-size:11px;line-height:1;text-decoration:none;
+  color:color-mix(in srgb, var(--c) 70%, var(--ink));
+  opacity:.75;padding:1px 2px;border-radius:4px;
+}
+.node-link:hover{opacity:1;background:color-mix(in srgb, var(--c) 16%, transparent)}
+.node.d0 .node-link{color:var(--on-color)}
+
+/* multi-select: the primary one keeps a stronger ring */
+.node.sel-primary{box-shadow:0 0 0 2px var(--paper), 0 0 0 4px var(--accent), 0 0 0 6px color-mix(in srgb,var(--accent) 28%,transparent), var(--node-shadow)}
+.node.hit{box-shadow:0 0 0 2px var(--paper), 0 0 0 4px var(--pal-amber), var(--node-shadow)}
+.node.hit-now{box-shadow:0 0 0 2px var(--paper), 0 0 0 5px var(--pal-amber), var(--node-shadow)}
+
+/* ---------- where a dragged branch will land ---------- */
+#dropline{
+  position:absolute;z-index:25;display:none;pointer-events:none;
+  height:3px;border-radius:2px;background:var(--pal-amber);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--pal-amber) 26%, transparent);
+}
+#dropline.on{display:block}
+#dropline::before{
+  content:"";position:absolute;left:-4px;top:50%;transform:translateY(-50%);
+  width:9px;height:9px;border-radius:50%;background:var(--pal-amber);
+}
+
+/* ---------- find bar ---------- */
+#searchbar{
+  top:16px;left:50%;transform:translateX(-50%);
+  display:none;padding:5px 6px 5px 12px;gap:4px;
+}
+#searchbar.on{display:flex}
+#searchbar > svg{width:15px;height:15px;color:var(--ink-3);flex:none}
+#search-input{
+  border:none;background:none;outline:none;font:inherit;font-size:13.5px;
+  color:var(--ink);width:216px;padding:4px 2px;
+}
+#search-input::placeholder{color:var(--ink-3)}
+#search-count{
+  font-family:var(--font-mono);font-size:11px;color:var(--ink-3);
+  min-width:52px;text-align:right;
+}
+
+/* ---------- icon picker ---------- */
+#iconpick{
+  position:absolute;z-index:60;display:none;
+  width:288px;padding:10px;border-radius:13px;
+  background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-3);
+}
+#iconpick.on{display:block}
+.ip-grid{
+  display:grid;grid-template-columns:repeat(8,1fr);gap:3px;
+  max-height:212px;overflow:auto;margin-bottom:8px;
+}
+.ip-grid button{
+  aspect-ratio:1;border-radius:7px;font-size:18px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;
+}
+.ip-grid button:hover{background:var(--surface-3)}
+#ip-clear{width:100%;justify-content:center;height:30px;font-size:12.5px}
+
+/* ---------- importer ---------- */
+#importer{
+  position:fixed;inset:0;z-index:95;display:none;
+  align-items:center;justify-content:center;padding:24px;
+  background:color-mix(in srgb, var(--paper-2) 72%, transparent);
+  backdrop-filter:blur(3px);
+}
+#importer.on{display:flex}
+.imp{
+  width:min(720px,100%);max-height:88vh;display:flex;flex-direction:column;
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  box-shadow:var(--shadow-3);overflow:hidden;
+}
+.imp-head{padding:20px 24px 16px;border-bottom:1px solid var(--line)}
+.imp-head h3{font-family:var(--font-display);font-size:19px;margin:0;letter-spacing:-.016em}
+.imp-head p{margin:5px 0 0;color:var(--ink-2);font-size:13.5px;max-width:60ch}
+.imp-body{padding:20px 24px;overflow:auto;display:flex;flex-direction:column;gap:16px}
+.imp-foot{
+  padding:14px 24px;border-top:1px solid var(--line);
+  display:flex;align-items:center;gap:10px;
+}
+.imp-foot .spacer{margin-left:auto}
+
+.drop{
+  border:1.5px dashed var(--line-strong);border-radius:13px;
+  padding:30px 24px;text-align:center;color:var(--ink-2);
+  transition:border-color .14s ease, background .14s ease;
+  cursor:pointer;
+}
+.drop:hover,.drop.hot{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--accent)}
+.drop strong{display:block;font-size:14.5px;font-weight:600;color:inherit;margin-bottom:4px}
+.drop span{font-size:12.5px;opacity:.85}
+
+.shot{
+  display:flex;gap:14px;align-items:flex-start;
+  padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);
+}
+.shot img{
+  width:132px;height:96px;object-fit:contain;flex:none;border-radius:8px;
+  background:var(--surface);border:1px solid var(--line);
+}
+.shot .meta{display:flex;flex-direction:column;gap:4px;min-width:0}
+.shot .fname{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shot .fsize{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+
+.status{
+  display:flex;align-items:center;gap:9px;
+  font-size:13.5px;color:var(--ink-2);
+}
+.status .spin{
+  width:14px;height:14px;flex:none;border-radius:50%;
+  border:2px solid color-mix(in srgb,var(--accent) 28%,transparent);
+  border-top-color:var(--accent);
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.status.bad{color:var(--danger)}
+.status.good{color:var(--accent)}
+
+#outline{
+  width:100%;min-height:190px;resize:vertical;
+  font-family:var(--font-mono);font-size:12.5px;line-height:1.65;
+  padding:12px 13px;border-radius:11px;border:1px solid var(--line);
+  background:var(--surface-2);color:var(--ink);outline:none;
+  white-space:pre;overflow-wrap:normal;overflow-x:auto;
+}
+#outline:focus{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 20%,transparent);background:var(--surface)}
+.tally{
+  display:flex;gap:16px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);
+}
+.tally b{color:var(--ink-2);font-weight:500}
+
+.note-box{
+  padding:12px 14px;border-radius:11px;font-size:13px;line-height:1.6;
+  background:color-mix(in srgb,var(--pal-amber) 10%,var(--surface));
+  border:1px solid color-mix(in srgb,var(--pal-amber) 32%,transparent);
+  color:var(--ink-2);
+}
+.note-box b{color:var(--ink);font-weight:600}
+.note-box code{
+  font-family:var(--font-mono);font-size:12px;
+  background:var(--surface-3);padding:1px 5px;border-radius:5px;
+}
+.imp-tabs{display:flex;gap:4px;padding:0 24px;border-bottom:1px solid var(--line)}
+.imp-tabs button{
+  padding:10px 13px;font-size:13.5px;font-weight:600;color:var(--ink-3);
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+.imp-tabs button:hover{color:var(--ink-2)}
+.imp-tabs button.on{color:var(--ink);border-bottom-color:var(--accent)}
+
+/* ---------- toast ---------- */
+#toast{
+  position:fixed;bottom:22px;left:50%;transform:translate(-50%,14px);
+  z-index:100;padding:9px 15px;border-radius:10px;
+  background:var(--ink);color:var(--paper);font-size:13px;font-weight:500;
+  box-shadow:var(--shadow-3);opacity:0;pointer-events:none;
+  transition:opacity .2s ease, transform .2s ease;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition-duration:.01ms !important;animation-duration:.01ms !important}
+}
+@media (max-width:720px){
+  #inspector{top:auto;bottom:62px;right:12px;left:12px;width:auto;max-height:44vh;
+             transform:translateY(calc(100% + 22px))}
+  #inspector.on{transform:none}
+  .home-inner{padding:36px 20px 70px}
+  #addbar{bottom:12px}
+  #zoombar{display:none}
+}
+</style>
+
+<!-- ============================ HOME ============================ -->
+<section class="view on" id="home">
+  <div class="home-inner">
+    <div class="home-head">
+      <div>
+        <div class="wordmark">
+          <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path d="M8 16h6M14 16c3 0 3-8 6-8M14 16c3 0 3 8 6 8" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+            <rect x="1.5" y="12.5" width="7" height="7" rx="2.5" fill="var(--ink)"/>
+            <circle cx="23.5" cy="8" r="4" fill="var(--pal-amber)"/>
+            <circle cx="23.5" cy="24" r="4" fill="var(--pal-violet)"/>
+          </svg>
+          <h1>Branchboard</h1>
+        </div>
+        <p class="home-lede">Boards for thinking in branches. Plant as many trees as you like on one canvas, and grow each one as deep as the idea goes.</p>
+      </div>
+      <div class="home-actions">
+        <button class="btn ghost" id="import-btn" title="Import a picture, an outline, or a board file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Import
+        </button>
+        <button class="btn primary" id="new-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          New board
+        </button>
+      </div>
+    </div>
+
+    <div class="shelf-label">
+      <h2>Your boards</h2>
+      <span class="count" id="board-count"></span>
+      <span class="store-note" id="store-note"></span>
+    </div>
+    <div class="grid" id="board-grid"></div>
+  </div>
+  <input type="file" id="file-input" accept="application/json,.json" hidden>
+</section>
+
+<!-- ============================ EDITOR ============================ -->
+<section class="view" id="editor">
+  <div id="canvas">
+    <div id="world"></div>
+    <div id="hint">
+      <div class="hint-card">
+        <h3>Empty canvas</h3>
+        <p>Double-click anywhere to plant a tree.<br>
+        Then <span class="kbd">Tab</span> grows a child, <span class="kbd">Enter</span> adds a sibling.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="bar" id="topbar">
+    <button class="btn ghost icon" id="back-btn" title="All boards">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div id="board-name" contenteditable="plaintext-only" spellcheck="false" role="textbox" aria-label="Board name"></div>
+    <span id="saved">Saved</span>
+    <span class="divider"></span>
+    <button class="btn ghost icon" id="undo-btn" title="Undo (Ctrl+Z)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h11a5 5 0 0 1 0 10h-5"/><path d="M7 4L3 8l4 4"/></svg>
+    </button>
+    <button class="btn ghost icon" id="redo-btn" title="Redo (Ctrl+Shift+Z)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8H10a5 5 0 0 0 0 10h5"/><path d="M17 4l4 4-4 4"/></svg>
+    </button>
+    <span class="divider"></span>
+    <button class="btn ghost" id="export-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      Export
+    </button>
+    <button class="btn ghost icon" id="board-menu-btn" title="Board options">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="5" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.6" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button class="btn ghost icon" id="help-btn" title="Keyboard shortcuts (?)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 1 1 3.2 2.5c-.5.2-.7.6-.7 1.1v.5"/><circle cx="12" cy="16.8" r=".9" fill="currentColor" stroke="none"/></svg>
+    </button>
+  </div>
+
+  <div class="bar" id="searchbar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+    <input id="search-input" type="text" placeholder="Find in this board" spellcheck="false" autocomplete="off" aria-label="Find in this board">
+    <span id="search-count"></span>
+    <button class="btn ghost icon" id="search-prev" title="Previous (Shift+Enter)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+    </button>
+    <button class="btn ghost icon" id="search-next" title="Next (Enter)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <button class="btn ghost icon" id="search-close" title="Close (Esc)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+
+  <div id="dropline" aria-hidden="true"></div>
+
+  <div id="iconpick" role="dialog" aria-label="Choose an icon">
+    <div class="ip-grid" id="ip-grid"></div>
+    <button class="btn ghost" id="ip-clear">Remove icon</button>
+  </div>
+
+  <div class="bar" id="zoombar">
+    <button class="btn ghost icon" id="zoom-out" title="Zoom out">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+    </button>
+    <span id="zoomlevel">100%</span>
+    <button class="btn ghost icon" id="zoom-in" title="Zoom in">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <span class="divider"></span>
+    <button class="btn ghost" id="zoom-fit" title="Zoom to content (1)">Fit</button>
+  </div>
+
+  <div class="bar" id="addbar">
+    <button class="btn ghost" id="add-tree" title="New tree (M)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="9.5" width="6" height="5" rx="1.5"/><path d="M8.5 12h3M11.5 12c2.5 0 2 -6 4.5-6M11.5 12c2.5 0 2 6 4.5 6"/><circle cx="18.5" cy="6" r="2.6"/><circle cx="18.5" cy="18" r="2.6"/></svg>
+      New tree
+    </button>
+    <span class="divider"></span>
+    <button class="btn ghost" id="add-child" title="Add child (Tab)">Child <span class="kbd">Tab</span></button>
+    <button class="btn ghost" id="add-sibling" title="Add sibling (Enter)">Sibling <span class="kbd">↵</span></button>
+  </div>
+
+  <aside id="inspector" aria-label="Node inspector">
+    <div class="insp-head">
+      <div class="insp-kicker" id="insp-kicker">Node</div>
+      <div class="insp-title" id="insp-title"></div>
+    </div>
+    <div class="insp-body">
+      <div class="field">
+        <label>Branch colour</label>
+        <div class="swatches" id="swatches"></div>
+      </div>
+      <div class="field" id="dir-field">
+        <label>Branch direction</label>
+        <div class="seg" id="dir-seg">
+          <button data-dir="right">Right</button>
+          <button data-dir="both">Both</button>
+          <button data-dir="left">Left</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Icon and link</label>
+        <div class="insp-row">
+          <button class="btn" id="i-icon">Icon</button>
+          <button class="btn" id="i-link">Link</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Note</label>
+        <textarea id="note" placeholder="Detail that does not belong on the canvas…" spellcheck="false"></textarea>
+      </div>
+      <div class="stat"><span id="stat-depth"></span><span id="stat-desc"></span></div>
+    </div>
+    <div class="insp-foot">
+      <div class="insp-row">
+        <button class="btn" id="i-child">Add child</button>
+        <button class="btn" id="i-collapse">Collapse</button>
+      </div>
+      <div class="insp-row">
+        <button class="btn" id="i-detach" title="Make this node a tree of its own">Detach</button>
+        <button class="btn danger" id="i-delete">Delete</button>
+      </div>
+    </div>
+  </aside>
+</section>
+
+<div class="menu" id="ctx-menu"></div>
+
+<div id="sheet" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+  <div class="sheet-inner">
+    <h3>Keyboard</h3>
+    <p class="sub">Branchboard is built to be driven from the keys — the mouse is optional.</p>
+    <div class="keys">
+      <div>
+        <h4>Growing</h4>
+        <ul>
+          <li><span>Add child</span> <span class="kbd">Tab</span></li>
+          <li><span>Add sibling</span> <span class="kbd">Enter</span></li>
+          <li><span>Add sibling above</span> <span class="kbd">Ctrl + Enter</span></li>
+          <li><span>Add a parent above</span> <span class="kbd">Alt + Enter</span></li>
+          <li><span>New tree</span> <span class="kbd">M</span></li>
+          <li><span>Edit text</span> <span class="kbd">F2</span></li>
+          <li><span>Line break while editing</span> <span class="kbd">Shift + Enter</span></li>
+          <li><span>Delete</span> <span class="kbd">Delete</span></li>
+          <li><span>Duplicate</span> <span class="kbd">Ctrl + D</span></li>
+          <li><span>Detach as new tree</span> <span class="kbd">D</span></li>
+        </ul>
+        <h4 style="margin-top:18px">Restructuring</h4>
+        <ul>
+          <li><span>Indent (tuck under sibling)</span> <span class="kbd">Ctrl + Alt + ]</span></li>
+          <li><span>Outdent</span> <span class="kbd">Ctrl + Alt + [</span></li>
+          <li><span>Copy branch</span> <span class="kbd">Ctrl + C</span></li>
+          <li><span>Cut branch</span> <span class="kbd">Ctrl + X</span></li>
+          <li><span>Paste (an outline works too)</span> <span class="kbd">Ctrl + V</span></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Moving around</h4>
+        <ul>
+          <li><span>Walk the tree</span> <span class="kbd">&#8593; &#8595; &#8592; &#8594;</span></li>
+          <li><span>Collapse / expand</span> <span class="kbd">Ctrl + /  or  C</span></li>
+          <li><span>Select several</span> <span class="kbd">Shift + Click</span></li>
+          <li><span>Select all</span> <span class="kbd">Ctrl + A</span></li>
+          <li><span>Find in board</span> <span class="kbd">Ctrl + F</span></li>
+          <li><span>Pan the canvas</span> <span class="kbd">Space + drag</span></li>
+        </ul>
+        <h4 style="margin-top:18px">View &amp; style</h4>
+        <ul>
+          <li><span>Zoom in / out</span> <span class="kbd">=  /  -</span></li>
+          <li><span>Zoom to 100%</span> <span class="kbd">0</span></li>
+          <li><span>Zoom to content</span> <span class="kbd">1</span></li>
+          <li><span>Zoom to selection</span> <span class="kbd">2</span></li>
+          <li><span>Colour the branch</span> <span class="kbd">Shift + 1&#8230;8</span></li>
+          <li><span>Icon on a node</span> <span class="kbd">Shift + X</span></li>
+          <li><span>Link on a node</span> <span class="kbd">Ctrl + Shift + U</span></li>
+          <li><span>Undo / redo</span> <span class="kbd">Ctrl + Z</span></li>
+        </ul>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<div id="importer" role="dialog" aria-modal="true" aria-label="Import">
+  <div class="imp">
+    <div class="imp-head">
+      <h3 id="imp-title">Import</h3>
+      <p id="imp-lede"></p>
+    </div>
+    <div class="imp-tabs">
+      <button data-tab="picture">From a picture</button>
+      <button data-tab="outline">From an outline</button>
+    </div>
+
+    <div class="imp-body">
+      <!-- picture pane -->
+      <div id="pane-picture" style="display:none;flex-direction:column;gap:16px">
+        <div class="drop" id="drop">
+          <strong>Drop a picture of a mind map here</strong>
+          <span>or click to choose one — PNG, JPG, WebP</span>
+        </div>
+        <div class="shot" id="shot" style="display:none">
+          <img id="shot-img" alt="The picture you are importing">
+          <div class="meta">
+            <div class="fname" id="shot-name"></div>
+            <div class="fsize" id="shot-size"></div>
+            <button class="btn ghost" id="shot-clear" style="align-self:flex-start;margin-top:4px;height:28px;font-size:12.5px">Choose another</button>
+          </div>
+        </div>
+        <div class="status" id="vision-status" style="display:none"></div>
+        <div class="note-box" id="vision-note" style="display:none"></div>
+      </div>
+
+      <!-- outline pane -->
+      <div id="pane-outline" style="display:none;flex-direction:column;gap:12px">
+        <textarea id="outline" spellcheck="false" placeholder="Nimbus 2.0 launch&#10;  Positioning&#10;    One line, no jargon&#10;    Proof points&#10;  Launch week&#10;    Founder video&#10;&#10;Open questions&#10;  Who owns the pricing page?"></textarea>
+        <div class="tally" id="tally"></div>
+      </div>
+    </div>
+
+    <div class="imp-foot">
+      <button class="btn ghost" id="imp-cancel">Cancel</button>
+      <span class="spacer"></span>
+      <button class="btn" id="imp-read" style="display:none">Read the picture</button>
+      <button class="btn primary" id="imp-create" disabled>Create board</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="image-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+
+<div id="toast"></div>
+<div id="measure" class="node" aria-hidden="true"><div class="node-label"></div></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   Branchboard — constants & helpers
+   ============================================================ */
+var SVGNS = "http://www.w3.org/2000/svg";
+var STORE_KEY = "branchboard.v1";
+var PALETTE = ["violet","blue","teal","green","amber","rose","plum","slate"];
+var seq = 0;
+function uid(){ seq++; return "n" + seq.toString(36) + Math.random().toString(36).slice(2,8); }
+function $(s){ return document.querySelector(s); }
+function clamp(v,a,b){ return v<a?a:v>b?b:v; }
+function clean(k,v){ return k.charAt(0)==="_" ? undefined : v; }
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+
+var toastEl = $("#toast"), toastTimer = null;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ toastEl.classList.remove("on"); }, 2200);
+}
+
+function ago(ts){
+  if(!ts) return "just now";
+  var s = Math.max(0, Math.round((Date.now()-ts)/1000));
+  if(s < 60) return "just now";
+  var m = Math.round(s/60); if(m < 60) return m + " min ago";
+  var h = Math.round(m/60); if(h < 24) return h + (h===1?" hour ago":" hours ago");
+  var d = Math.round(h/24); if(d < 30) return d + (d===1?" day ago":" days ago");
+  return new Date(ts).toLocaleDateString(undefined,{month:"short",day:"numeric"});
+}
+
+/* ============================================================
+   Data
+   ============================================================ */
+function newNode(text, color){
+  return { id: uid(), text: text||"", color: color||null, note:"", icon:"", link:"",
+           collapsed:false, children:[] };
+}
+function buildTree(x, y, dir, spec){
+  var t = { id: uid(), x:x, y:y, dir:dir||"right", root: fromSpec(spec, 0) };
+  return t;
+}
+function fromSpec(spec, depth){
+  var n = newNode(spec[0]);
+  var kids = spec[1] || [];
+  for(var i=0;i<kids.length;i++){
+    var c = fromSpec(kids[i], depth+1);
+    if(depth===0) c.color = PALETTE[i % PALETTE.length];
+    n.children.push(c);
+  }
+  return n;
+}
+
+function sampleBoard(){
+  var now = Date.now();
+  var t1 = buildTree(0, 0, "both", ["Nimbus 2.0 launch", [
+    ["Positioning", [
+      ["One line: \"ship faster, break less\"", []],
+      ["Against Loom-style demos", [["Show the diff, not the dashboard",[]]]],
+      ["Proof points", [["3 design-partner quotes",[]],["Before / after latency chart",[]]]]
+    ]],
+    ["Launch week", [
+      ["Mon — changelog + docs", []],
+      ["Tue — founder video", [["90 seconds, no slides",[]]]],
+      ["Thu — customer story", []],
+      ["Fri — office hours", []]
+    ]],
+    ["Surfaces", [
+      ["Website hero", [["New screenshot set",[]]]],
+      ["In-product banner", []],
+      ["Lifecycle email", [["Trial users first",[]],["Dormant accounts on day 4",[]]]]
+    ]],
+    ["Risks", [
+      ["Docs lag the build", [["Freeze API 5 days out",[]]]],
+      ["Support volume spike", []]
+    ]]
+  ]]);
+  var t2 = buildTree(-360, 430, "right", ["Open questions", [
+    ["Do we gate the migration behind a flag?", [["Ask infra on Tuesday",[]]]],
+    ["Who owns the pricing page copy?", []],
+    ["Is the free tier still 3 seats?", [["Finance said maybe 5",[]]]]
+  ]]);
+  var t3 = buildTree(440, 430, "right", ["Metrics that matter", [
+    ["Activation within 24h", [["Target 42%",[]]]],
+    ["Time to first successful run", []],
+    ["Week-4 retention", [["Cohort by acquisition source",[]]]]
+  ]]);
+  return {
+    id: uid(),
+    name: "Nimbus 2.0 — launch thinking",
+    createdAt: now, updatedAt: now,
+    view: null,
+    trees: [t1, t2, t3]
+  };
+}
+
+var db = { boards: [] };
+function loadDB(){
+  try{
+    var raw = localStorage.getItem(STORE_KEY);
+    if(raw){
+      var p = JSON.parse(raw);
+      if(p && Array.isArray(p.boards)){ db = p; return; }
+    }
+  }catch(e){}
+  db = { boards:[ sampleBoard() ] };
+  saveDB();
+}
+var saveTimer = null;
+function saveDB(){
+  if(store.mode === "folder") return saveToFolder();
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(db, clean)); }catch(e){}
+}
+function touch(){
+  if(board) board.updatedAt = Date.now();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){
+    saveDB();
+    var s = $("#saved");
+    s.classList.add("on");
+    setTimeout(function(){ s.classList.remove("on"); }, 1300);
+  }, 320);
+}
+
+/* ============================================================
+   Measuring & layout
+   ============================================================ */
+var measureEl = $("#measure");
+var measureLab = measureEl.firstElementChild;
+var mcache = new Map();
+
+function depthClass(d){ return d===0 ? "d0" : d===1 ? "d1" : d>=4 ? "dn deep" : "dn"; }
+
+var measureIcon = document.createElement("span");
+measureIcon.className = "node-icon";
+
+function measureText(text, depth, icon){
+  var cls = depthClass(depth);
+  icon = icon || "";
+  var key = cls + " " + icon + " " + text;
+  var v = mcache.get(key);
+  if(v) return v;
+  measureEl.className = "node " + cls;
+  if(icon){
+    measureIcon.textContent = icon;
+    if(measureIcon.parentNode !== measureEl) measureEl.insertBefore(measureIcon, measureLab);
+  }else if(measureIcon.parentNode === measureEl){
+    measureEl.removeChild(measureIcon);
+  }
+  measureLab.textContent = text.length ? text : " ";
+  var r = measureEl.getBoundingClientRect();
+  v = { w: Math.ceil(r.width), h: Math.ceil(r.height) };
+  mcache.set(key, v);
+  return v;
+}
+
+function HGAP(d){ return d===0 ? 54 : d===1 ? 40 : 30; }
+function VGAP(d){ return d===1 ? 16 : d===2 ? 10 : 7; }
+
+function msr(n, depth){
+  if(editingId === n.id && editingEl){
+    var r = editingEl.getBoundingClientRect();
+    n._w = r.width / view.z; n._h = r.height / view.z;
+  }else{
+    var m = measureText(n.text, depth, n.icon);
+    n._w = m.w; n._h = m.h;
+  }
+  n._d = depth;
+  var kids = n.collapsed ? [] : n.children;
+  if(!kids.length){ n._sh = n._h; return n._sh; }
+  var total = 0;
+  for(var i=0;i<kids.length;i++) total += msr(kids[i], depth+1);
+  total += (kids.length-1) * VGAP(depth+1);
+  n._sh = Math.max(n._h, total);
+  return n._sh;
+}
+
+function place(n, depth, nodeX, cy, sign){
+  n._x = nodeX; n._y = cy - n._h/2; n._sign = sign; n._d = depth;
+  var kids = n.collapsed ? [] : n.children;
+  if(kids.length) placeGroup(kids, sign, n, depth);
+}
+function placeGroup(kids, sign, parent, depth){
+  var gap = VGAP(depth+1), total = 0, i;
+  for(i=0;i<kids.length;i++) total += kids[i]._sh;
+  total += (kids.length-1)*gap;
+  var pcy = parent._y + parent._h/2;
+  var top = pcy - total/2;
+  for(i=0;i<kids.length;i++){
+    var k = kids[i];
+    var kcy = top + k._sh/2;
+    var kx = sign>0 ? parent._x + parent._w + HGAP(depth)
+                    : parent._x - HGAP(depth) - k._w;
+    place(k, depth+1, kx, kcy, sign);
+    top += k._sh + gap;
+  }
+}
+function layoutTree(tree){
+  var root = tree.root;
+  msr(root, 0);
+  var dir = tree.dir || "right";
+  var kids = root.collapsed ? [] : root.children;
+  if(dir === "both" && kids.length > 1){
+    root._x = 0; root._y = -root._h/2; root._sign = 1; root._d = 0;
+    var R = [], L = [];
+    for(var i=0;i<kids.length;i++) (i%2===0 ? R : L).push(kids[i]);
+    placeGroup(R, 1, root, 0);
+    placeGroup(L, -1, root, 0);
+  }else{
+    place(root, 0, 0, 0, dir === "left" ? -1 : 1);
+  }
+}
+
+function walkVisible(n, parent, depth, fn){
+  fn(n, parent, depth);
+  if(n.collapsed) return;
+  for(var i=0;i<n.children.length;i++) walkVisible(n.children[i], n, depth+1, fn);
+}
+function walkAll(n, fn, depth){
+  depth = depth||0;
+  fn(n, depth);
+  for(var i=0;i<n.children.length;i++) walkAll(n.children[i], fn, depth+1);
+}
+function countAll(n){ var c = 0; walkAll(n, function(){ c++; }); return c; }
+function countDesc(n){ return countAll(n) - 1; }
+
+/* colour resolution: nearest ancestor that names a pigment */
+function colorPropOf(node, parentChain){
+  for(var i=parentChain.length-1;i>=0;i--){
+    if(parentChain[i].color) return "--pal-" + parentChain[i].color;
+  }
+  return "--ink";
+}
+function effProp(id){
+  var e = index.get(id);
+  if(!e) return "--ink";
+  var n = e.node;
+  while(n){
+    if(n.color) return "--pal-" + n.color;
+    var pe = index.get(n.id);
+    n = pe && pe.parent;
+  }
+  return "--ink";
+}
+
+/* ============================================================
+   App state
+   ============================================================ */
+var db_ready = false;
+var board = null;
+/* `sel` is the primary selection - the one the keyboard walks from and the
+   one the inspector describes. `selSet` is everything selected, primary
+   included, so shift-click can gather several. */
+var sel = null;
+var selSet = new Set();
+
+function selectOnly(id){
+  selSet.clear();
+  if(id) selSet.add(id);
+  sel = id || null;
+}
+function selectToggle(id){
+  if(!id) return;
+  if(selSet.has(id)){
+    selSet.delete(id);
+    if(sel === id) sel = selSet.size ? Array.from(selSet)[selSet.size - 1] : null;
+  }else{
+    selSet.add(id);
+    sel = id;
+  }
+}
+function selectedEntries(){
+  var out = [];
+  selSet.forEach(function(id){ var e = index.get(id); if(e) out.push(e); });
+  return out;
+}
+/* drop ids that no longer exist (after a delete, undo, or board switch) */
+function pruneSelection(){
+  var gone = [];
+  selSet.forEach(function(id){ if(!index.has(id)) gone.push(id); });
+  gone.forEach(function(id){ selSet.delete(id); });
+  if(sel && !index.has(sel)) sel = selSet.size ? Array.from(selSet)[0] : null;
+}
+var editingId = null, editingEl = null, editingLabel = null, editSnapshot = null;
+var freshId = null;   /* a box created moments ago and not yet named */
+var index = new Map();
+var view = { x:0, y:0, z:1 };
+var undoStack = [], redoStack = [];
+
+var homeView = $("#home"), editorView = $("#editor");
+var canvas = $("#canvas"), world = $("#world");
+
+/* ============================================================
+   Home
+   ============================================================ */
+function showHome(){
+  commitEdit();
+  editorView.classList.remove("on");
+  homeView.classList.add("on");
+  board = null;
+  renderHome();
+}
+function renderHome(){
+  var grid = $("#board-grid");
+  grid.innerHTML = "";
+  var boards = db.boards.slice().sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
+  $("#board-count").textContent = boards.length ? boards.length + (boards.length===1?" board":" boards") : "";
+
+  boards.forEach(function(b){
+    var card = document.createElement("div");
+    card.className = "card";
+    card.tabIndex = 0;
+    card.setAttribute("role","button");
+    var nodes = 0, trees = b.trees.length;
+    b.trees.forEach(function(t){ nodes += countAll(t.root); });
+
+    var prev = document.createElement("div");
+    prev.className = "card-preview";
+    prev.innerHTML = thumbnail(b) || "<div class='card-empty'>Empty canvas</div>";
+    card.appendChild(prev);
+
+    var body = document.createElement("div");
+    body.className = "card-body";
+    body.innerHTML =
+      "<div class='card-title'>" + esc(b.name || "Untitled board") + "</div>" +
+      "<div class='card-meta'><span>" + trees + (trees===1?" tree":" trees") + "</span>" +
+      "<span class='sep'>·</span><span>" + nodes + " nodes</span>" +
+      "<span class='sep'>·</span><span>" + ago(b.updatedAt) + "</span></div>";
+    card.appendChild(body);
+
+    var menuBtn = document.createElement("button");
+    menuBtn.className = "card-menu";
+    menuBtn.title = "Board options";
+    menuBtn.innerHTML = "<svg viewBox='0 0 24 24' fill='currentColor'><circle cx='6' cy='12' r='1.7'/><circle cx='12' cy='12' r='1.7'/><circle cx='18' cy='12' r='1.7'/></svg>";
+    menuBtn.addEventListener("click", function(ev){ ev.stopPropagation(); boardMenu(b, menuBtn); });
+    card.appendChild(menuBtn);
+
+    card.addEventListener("click", function(){ openBoard(b.id); });
+    card.addEventListener("keydown", function(ev){
+      if(ev.key==="Enter" || ev.key===" "){ ev.preventDefault(); openBoard(b.id); }
+    });
+    grid.appendChild(card);
+  });
+
+  var add = document.createElement("button");
+  add.className = "card new";
+  add.innerHTML = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'><path d='M12 5v14M5 12h14'/></svg><span>New board</span>";
+  add.addEventListener("click", newBoard);
+  grid.appendChild(add);
+}
+
+function thumbnail(b){
+  if(!b.trees.length) return "";
+  var parts = [], minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9, count = 0;
+  b.trees.forEach(function(tree){
+    layoutTree(tree);
+    walkVisible(tree.root, null, 0, function(n, parent, depth){
+      if(count++ > 240) return;
+      var x = tree.x + n._x, y = tree.y + n._y;
+      minX = Math.min(minX,x); minY = Math.min(minY,y);
+      maxX = Math.max(maxX,x+n._w); maxY = Math.max(maxY,y+n._h);
+      var col = thumbColor(n, parent, tree);
+      if(depth===0){
+        parts.push("<rect x='"+x+"' y='"+y+"' width='"+n._w+"' height='"+n._h+"' rx='6' style='fill:var("+col+")'/>");
+      }else if(depth===1){
+        parts.push("<rect x='"+x+"' y='"+y+"' width='"+n._w+"' height='"+n._h+"' rx='5' style='fill:var("+col+");fill-opacity:.22;stroke:var("+col+");stroke-opacity:.55' stroke-width='1.5' vector-effect='non-scaling-stroke'/>");
+      }else{
+        parts.push("<rect x='"+x+"' y='"+(y+n._h-2.5)+"' width='"+n._w+"' height='2.5' rx='1.2' style='fill:var("+col+");fill-opacity:.6'/>");
+      }
+      if(parent){
+        var sign = n._sign;
+        var pb = (depth-1)>=2, cb = depth>=2;
+        var px = sign>0 ? tree.x+parent._x+parent._w : tree.x+parent._x;
+        var py = tree.y + parent._y + (pb ? parent._h : parent._h/2);
+        var cx = sign>0 ? x : x+n._w;
+        var cy = y + (cb ? n._h : n._h/2);
+        var dx = Math.max(14, Math.abs(cx-px)*0.55)*sign;
+        parts.push("<path d='M"+px+" "+py+" C"+(px+dx)+" "+py+" "+(cx-dx)+" "+cy+" "+cx+" "+cy+"' fill='none' style='stroke:var("+col+");stroke-opacity:.5' stroke-width='1.4' vector-effect='non-scaling-stroke'/>");
+      }
+    });
+  });
+  if(minX > maxX) return "";
+  var pad = 26;
+  var vb = (minX-pad)+" "+(minY-pad)+" "+(maxX-minX+pad*2)+" "+(maxY-minY+pad*2);
+  return "<svg viewBox='"+vb+"' preserveAspectRatio='xMidYMid meet'>"+parts.join("")+"</svg>";
+}
+function thumbColor(n, parent, tree){
+  var cur = n, guard = 0;
+  var chain = [];
+  (function find(node, path){
+    if(chain.length) return;
+    var p2 = path.concat([node]);
+    if(node === n){ chain = p2; return; }
+    for(var i=0;i<node.children.length;i++) find(node.children[i], p2);
+  })(tree.root, []);
+  for(var i=chain.length-1;i>=0;i--) if(chain[i].color) return "--pal-"+chain[i].color;
+  return "--ink";
+}
+
+function newBoard(){
+  var b = { id: uid(), name: "Untitled board", createdAt: Date.now(), updatedAt: Date.now(), view:null, trees: [] };
+  db.boards.push(b);
+  saveDB();
+  openBoard(b.id);
+}
+function boardMenu(b, anchor){
+  openMenu(anchor, [
+    { label:"Rename", icon:"M4 20h4l10-10-4-4L4 16v4z", run:function(){
+        var name = prompt("Board name", b.name);
+        if(name !== null && name.trim()){ b.name = name.trim(); b.updatedAt = Date.now(); saveDB(); renderHome(); }
+      }},
+    { label:"Duplicate", icon:"M8 8h11v11H8zM5 5h11v3H5z", run:function(){
+        var copy = JSON.parse(JSON.stringify(b, clean));
+        copy.id = uid(); copy.name = b.name + " copy";
+        copy.createdAt = copy.updatedAt = Date.now();
+        copy.trees.forEach(function(t){ t.id = uid(); walkAll(t.root, function(n){ n.id = uid(); }); });
+        db.boards.push(copy); saveDB(); renderHome(); toast("Duplicated");
+      }},
+    { label:"Download as JSON", icon:"M12 3v12M7 10l5 5 5-5M4 19h16", run:function(){
+        downloadFile(fileSafe(b.name)+".json", JSON.stringify({version:1, board:b}, clean, 2));
+      }},
+    { sep:true },
+    { label:"Delete board", danger:true, icon:"M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13", run:function(){
+        var where = store.mode === "folder"
+          ? "It moves to the _deleted folder inside your boards folder."
+          : "This cannot be undone.";
+        if(confirm("Delete “" + b.name + "”?\n\n" + where)){
+          db.boards = db.boards.filter(function(x){ return x.id!==b.id; });
+          forgetBoardFile(b.id);
+          saveDB(); renderHome();
+          toast(store.mode === "folder" ? "Moved to _deleted" : "Board deleted");
+        }
+      }}
+  ]);
+}
+
+/* generic dropdown */
+var ctxMenu = $("#ctx-menu");
+function openMenu(anchor, items){
+  ctxMenu.innerHTML = "";
+  items.forEach(function(it){
+    if(it.sep){ ctxMenu.appendChild(document.createElement("hr")); return; }
+    var b = document.createElement("button");
+    if(it.danger) b.className = "danger";
+    b.innerHTML = (it.icon ? "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><path d='"+it.icon+"'/></svg>" : "") + "<span>"+esc(it.label)+"</span>";
+    b.addEventListener("click", function(){ closeMenu(); it.run(); });
+    ctxMenu.appendChild(b);
+  });
+  var r = anchor.getBoundingClientRect();
+  ctxMenu.classList.add("on");
+  var mw = ctxMenu.offsetWidth, mh = ctxMenu.offsetHeight;
+  var left = clamp(r.right - mw, 8, window.innerWidth - mw - 8);
+  var top = r.bottom + 6;
+  if(top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 6);
+  ctxMenu.style.left = left + "px";
+  ctxMenu.style.top = top + "px";
+}
+function closeMenu(){ ctxMenu.classList.remove("on"); }
+document.addEventListener("pointerdown", function(e){
+  if(ctxMenu.classList.contains("on") && !ctxMenu.contains(e.target)) closeMenu();
+}, true);
+
+/* ============================================================
+   Editor — open / render
+   ============================================================ */
+function openBoard(id){
+  board = db.boards.filter(function(b){ return b.id===id; })[0];
+  if(!board) return showHome();
+  homeView.classList.remove("on");
+  editorView.classList.add("on");
+  $("#board-name").textContent = board.name;
+  selectOnly(null); undoStack = []; redoStack = []; updateHistoryButtons();
+  view = board.view ? { x:board.view.x, y:board.view.y, z:board.view.z } : { x:0, y:0, z:1 };
+  render();
+  if(!board.view) fitToScreen(false);
+  else applyView();
+}
+
+function render(){
+  world.innerHTML = "";
+  index.clear();
+  board.trees.forEach(function(tree){
+    layoutTree(tree);
+    var g = document.createElement("div");
+    g.className = "tree";
+    g.dataset.tree = tree.id;
+    g.style.transform = "translate(" + tree.x + "px," + tree.y + "px)";
+    var svg = document.createElementNS(SVGNS, "svg");
+    g.appendChild(svg);
+    walkVisible(tree.root, null, 0, function(n, parent, depth){
+      var el = makeNodeEl(n, depth);
+      g.appendChild(el);
+      index.set(n.id, { node:n, parent:parent, depth:depth, tree:tree, el:el });
+    });
+    world.appendChild(g);
+    tree._el = g; tree._svg = svg;
+  });
+  pruneSelection();
+  applyPositions();
+  $("#hint").style.display = board.trees.length ? "none" : "flex";
+  syncInspector();
+}
+
+function makeNodeEl(n, depth){
+  var el = document.createElement("div");
+  el.className = "node " + depthClass(depth) + (selSet.has(n.id) ? " sel" : "") + (n.id === sel && selSet.size > 1 ? " sel-primary" : "");
+  el.dataset.id = n.id;
+  if(n.icon){
+    var ic = document.createElement("span");
+    ic.className = "node-icon";
+    ic.textContent = n.icon;
+    el.appendChild(ic);
+  }
+  var lab = document.createElement("div");
+  lab.className = "node-label";
+  lab.textContent = n.text;
+  el.appendChild(lab);
+  if(n.link){
+    var lk = document.createElement("a");
+    lk.className = "node-link";
+    lk.href = n.link;
+    lk.target = "_blank";
+    lk.rel = "noopener noreferrer";
+    lk.title = n.link;
+    lk.textContent = String.fromCharCode(0x2197);
+    el.appendChild(lk);
+  }
+  if(n.note && n.note.trim()){
+    var d = document.createElement("i");
+    d.className = "dot-note";
+    el.appendChild(d);
+  }
+  if(n.children.length){
+    var t = document.createElement("button");
+    t.className = "toggle " + (n._sign > 0 ? "right" : "left") + (n.collapsed ? " shown" : "");
+    t.dataset.toggle = n.id;
+    t.tabIndex = -1;
+    t.title = n.collapsed ? "Expand" : "Collapse";
+    t.innerHTML = n.collapsed
+      ? String(countDesc(n))
+      : "<svg viewBox='0 0 10 10' width='8' height='8' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'><path d='M2 5h6'/></svg>";
+    el.appendChild(t);
+  }
+  return el;
+}
+
+function applyPositions(){
+  board.trees.forEach(function(tree){
+    layoutTree(tree);
+    var paths = [];
+    walkVisible(tree.root, null, 0, function(n, parent, depth){
+      var e = index.get(n.id);
+      if(e && e.el !== draggingEl) e.el.style.transform = "translate(" + n._x + "px," + n._y + "px)";
+      if(e) e.el.style.setProperty("--c", "var(" + effProp(n.id) + ")");
+      if(parent) paths.push(linkPath(parent, n, depth));
+    });
+    if(tree._svg) tree._svg.innerHTML = paths.join("");
+  });
+}
+
+function linkPath(p, c, cd){
+  var sign = c._sign;
+  var pBottom = (cd-1) >= 2, cBottom = cd >= 2;
+  var px = sign>0 ? p._x + p._w : p._x;
+  var py = p._y + (pBottom ? p._h : p._h/2);
+  var cx = sign>0 ? c._x : c._x + c._w;
+  var cy = c._y + (cBottom ? c._h : c._h/2);
+  var sw = cd===1 ? 2.2 : cd===2 ? 1.8 : 1.5;
+  var d;
+  if(board && board.lineStyle === "straight"){
+    /* out of the parent, across, then into the child - an elbow, not a diagonal */
+    var midX = px + (cx - px) * 0.5;
+    d = "M" + px + " " + py + " L" + midX + " " + py + " L" + midX + " " + cy + " L" + cx + " " + cy;
+  }else{
+    var dx = Math.max(16, Math.abs(cx-px)*0.55) * sign;
+    d = "M" + px + " " + py + " C" + (px+dx) + " " + py + " " + (cx-dx) + " " + cy + " " + cx + " " + cy;
+  }
+  return "<path class='link' style='--c:var(" + effProp(c.id) + ")' stroke-width='" + sw +
+         "' stroke-linejoin='round' d='" + d + "'/>";
+}
+
+/* ============================================================
+   View: pan & zoom
+   ============================================================ */
+function applyView(){
+  world.style.transform = "translate(" + view.x + "px," + view.y + "px) scale(" + view.z + ")";
+  canvas.style.backgroundSize = (22*view.z) + "px " + (22*view.z) + "px";
+  canvas.style.backgroundPosition = view.x + "px " + view.y + "px";
+  $("#zoomlevel").textContent = Math.round(view.z*100) + "%";
+  if(board){ board.view = { x:view.x, y:view.y, z:view.z }; touch(); }
+}
+function screenToBoard(cx, cy){
+  var r = canvas.getBoundingClientRect();
+  return { x:(cx - r.left - view.x)/view.z, y:(cy - r.top - view.y)/view.z };
+}
+function zoomAt(factor, cx, cy){
+  var r = canvas.getBoundingClientRect();
+  var nz = clamp(view.z * factor, 0.2, 3);
+  var f = nz / view.z;
+  var ox = cx - r.left, oy = cy - r.top;
+  view.x = ox - (ox - view.x) * f;
+  view.y = oy - (oy - view.y) * f;
+  view.z = nz;
+  applyView();
+}
+function boardBBox(){
+  var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  board.trees.forEach(function(tree){
+    layoutTree(tree);
+    walkVisible(tree.root, null, 0, function(n){
+      minX = Math.min(minX, tree.x + n._x); minY = Math.min(minY, tree.y + n._y);
+      maxX = Math.max(maxX, tree.x + n._x + n._w); maxY = Math.max(maxY, tree.y + n._y + n._h);
+    });
+  });
+  if(minX > maxX) return null;
+  return { x:minX, y:minY, w:maxX-minX, h:maxY-minY };
+}
+function fitToScreen(animate){
+  var bb = boardBBox();
+  var r = canvas.getBoundingClientRect();
+  if(!bb){ view = { x:r.width/2, y:r.height/2, z:1 }; applyView(); return; }
+  var pad = 90;
+  var z = Math.min((r.width-pad*2)/bb.w, (r.height-pad*2)/bb.h, 1.25);
+  z = clamp(z, 0.2, 1.25);
+  view.z = z;
+  view.x = (r.width - bb.w*z)/2 - bb.x*z;
+  view.y = (r.height - bb.h*z)/2 - bb.y*z;
+  applyView();
+}
+
+/* ============================================================
+   Editing text
+   ============================================================ */
+function startEdit(id){
+  var e = index.get(id);
+  if(!e) return;
+  commitEdit();
+  editingId = id; editingEl = e.el;
+  e.el.classList.add("editing");
+  editSnapshot = e.node.text ? JSON.stringify(board.trees, clean) : null;
+  editingLabel = e.el.querySelector(".node-label");
+  try{ editingLabel.contentEditable = "plaintext-only"; }catch(err){ editingLabel.contentEditable = "true"; }
+  if(editingLabel.contentEditable !== "plaintext-only" && editingLabel.contentEditable !== "true"){
+    editingLabel.contentEditable = "true";
+  }
+  editingLabel.focus();
+  var r = document.createRange();
+  r.selectNodeContents(editingLabel);
+  var s = window.getSelection();
+  s.removeAllRanges(); s.addRange(r);
+  editingLabel.addEventListener("input", onEditInput);
+  editingLabel.addEventListener("blur", onEditBlur);
+  editingLabel.addEventListener("paste", onEditPaste);
+}
+function onEditInput(){ applyPositions(); }
+function onEditPaste(ev){
+  ev.preventDefault();
+  var txt = (ev.clipboardData || window.clipboardData).getData("text");
+  document.execCommand("insertText", false, txt.replace(/\r/g,""));
+}
+function onEditBlur(){ commitEdit(); }
+
+/* keepEmpty: the caller is about to grow another node from this one
+   (Tab / Enter), so an empty box here is on its way to being filled
+   and must not be swept up. */
+function commitEdit(keepEmpty){
+  if(!editingId) return;
+  var e = index.get(editingId);
+  var lab = editingLabel;
+  var id = editingId;
+  if(editingEl) editingEl.classList.remove("editing");
+  editingId = null; editingEl = null; editingLabel = null;
+  if(lab){
+    lab.removeEventListener("input", onEditInput);
+    lab.removeEventListener("blur", onEditBlur);
+    lab.removeEventListener("paste", onEditPaste);
+    lab.contentEditable = "false";
+    var NBSP = new RegExp(String.fromCharCode(160), "g");
+    var TRAIL = new RegExp(String.fromCharCode(10) + "+$");
+    var txt = lab.innerText.replace(NBSP, " ").replace(TRAIL, "");
+
+    /* A box that was just created and never named is litter - drop it,
+       and drop the undo step that created it, so nothing happened at all. */
+    if(!keepEmpty && e && id === freshId && !txt.trim() && !e.node.children.length){
+      freshId = null; editSnapshot = null;
+      if(e.parent){
+        e.parent.children.splice(e.parent.children.indexOf(e.node), 1);
+        selectOnly(e.parent.id);
+      }else{
+        board.trees = board.trees.filter(function(t){ return t !== e.tree; });
+        selectOnly(null);
+      }
+      if(undoStack.length){ undoStack.pop(); updateHistoryButtons(); }
+      render(); touch();
+      return;
+    }
+    if(txt.trim()) freshId = null;
+
+    if(e && e.node.text !== txt){
+      /* a rename is one undo step; filling in a freshly created node is not,
+         because creating it already pushed one */
+      if(editSnapshot){
+        undoStack.push(editSnapshot);
+        if(undoStack.length > 90) undoStack.shift();
+        redoStack.length = 0;
+        updateHistoryButtons();
+      }
+      e.node.text = txt;
+      touch();
+    }
+    editSnapshot = null;
+    if(e) lab.textContent = e.node.text;
+  }
+  applyPositions();
+  syncInspector();
+}
+
+/* ============================================================
+   Mutations
+   ============================================================ */
+function pushUndo(){
+  undoStack.push(JSON.stringify(board.trees, clean));
+  if(undoStack.length > 90) undoStack.shift();
+  redoStack.length = 0;
+  updateHistoryButtons();
+}
+function updateHistoryButtons(){
+  $("#undo-btn").disabled = !undoStack.length;
+  $("#redo-btn").disabled = !redoStack.length;
+}
+function undo(){
+  if(!undoStack.length) return;
+  commitEdit();
+  redoStack.push(JSON.stringify(board.trees, clean));
+  board.trees = JSON.parse(undoStack.pop());
+  updateHistoryButtons(); render(); touch();
+}
+function redo(){
+  if(!redoStack.length) return;
+  commitEdit();
+  undoStack.push(JSON.stringify(board.trees, clean));
+  board.trees = JSON.parse(redoStack.pop());
+  updateHistoryButtons(); render(); touch();
+}
+
+function nextColorFor(rootNode){
+  var used = {};
+  rootNode.children.forEach(function(c){ if(c.color) used[c.color] = (used[c.color]||0)+1; });
+  for(var i=0;i<PALETTE.length;i++) if(!used[PALETTE[i]]) return PALETTE[i];
+  return PALETTE[rootNode.children.length % PALETTE.length];
+}
+function addTreeAt(bx, by, text){
+  pushUndo();
+  var t = { id: uid(), x:bx, y:by, dir:"right", root: newNode(text || "") };
+  board.trees.push(t);
+  selectOnly(t.root.id);
+  freshId = t.root.id;
+  render(); touch();
+  startEdit(sel);
+  return t;
+}
+function addChild(){
+  var e = index.get(sel); if(!e) return;
+  pushUndo();
+  var n = newNode("");
+  if(e.depth === 0) n.color = nextColorFor(e.node);
+  e.node.collapsed = false;
+  e.node.children.push(n);
+  selectOnly(n.id);
+  freshId = n.id;
+  render(); touch(); startEdit(sel);
+}
+function addSibling(){
+  var e = index.get(sel); if(!e) return;
+  if(!e.parent){ return addChild(); }
+  pushUndo();
+  var n = newNode("");
+  if(e.depth === 1) n.color = nextColorFor(e.parent);
+  var i = e.parent.children.indexOf(e.node);
+  e.parent.children.splice(i+1, 0, n);
+  selectOnly(n.id);
+  freshId = n.id;
+  render(); touch(); startEdit(sel);
+}
+/* When several nodes are selected, some may sit inside others. Only the
+   outermost ones matter - removing a branch takes its descendants with it. */
+function outermostSelected(){
+  var entries = selectedEntries();
+  return entries.filter(function(e){
+    for(var p = e.parent; p; ){
+      if(selSet.has(p.id)) return false;
+      var pe = index.get(p.id);
+      p = pe && pe.parent;
+    }
+    return true;
+  });
+}
+function deleteSel(){
+  var targets = outermostSelected();
+  if(!targets.length) return;
+  pushUndo();
+  var nextSel = null;
+  targets.forEach(function(e){
+    if(!e.parent){
+      board.trees = board.trees.filter(function(t){ return t !== e.tree; });
+    }else{
+      var sibs = e.parent.children;
+      var i = sibs.indexOf(e.node);
+      if(i > -1) sibs.splice(i, 1);
+      if(!nextSel) nextSel = sibs.length ? sibs[Math.min(i, sibs.length - 1)].id : e.parent.id;
+    }
+  });
+  if(!nextSel) nextSel = board.trees.length ? board.trees[0].root.id : null;
+  selectOnly(nextSel);
+  render(); touch();
+}
+function toggleCollapse(id){
+  var e = index.get(id || sel); if(!e || !e.node.children.length) return;
+  pushUndo();
+  e.node.collapsed = !e.node.collapsed;
+  if(e.node.collapsed) selectOnly(e.node.id);
+  render(); touch();
+}
+function detachSel(){
+  var e = index.get(sel); if(!e || !e.parent) return;
+  pushUndo();
+  var n = e.node;
+  var prop = effProp(n.id);
+  if(!n.color && prop.indexOf("--pal-") === 0) n.color = prop.slice(6);
+  var i = e.parent.children.indexOf(n);
+  e.parent.children.splice(i,1);
+  board.trees.push({ id:uid(), x: e.tree.x + n._x, y: e.tree.y + n._y + n._h/2, dir:"right", root:n });
+  render(); touch();
+  toast("Detached as its own tree");
+}
+function setColor(cid){
+  var entries = selectedEntries();
+  if(!entries.length) return;
+  pushUndo();
+  entries.forEach(function(e){ e.node.color = cid; });
+  render(); touch();
+}
+
+/* ============================================================
+   Restructuring - the moves Whimsical gives you on the keyboard
+   ============================================================ */
+
+/* Indent: become the last child of the sibling above. */
+function indentSel(){
+  var e = index.get(sel);
+  if(!e || !e.parent) return toast("A tree root has nothing to indent under");
+  var sibs = e.parent.children;
+  var i = sibs.indexOf(e.node);
+  if(i <= 0) return toast("Nothing above this to tuck it under");
+  pushUndo();
+  var newParent = sibs[i - 1];
+  sibs.splice(i, 1);
+  newParent.collapsed = false;
+  newParent.children.push(e.node);
+  if(e.depth === 1 && e.node.color) e.node.color = null;   /* inherit its new branch */
+  render(); touch();
+}
+
+/* Outdent: become the next sibling of your own parent. A first-level node
+   has nowhere left to go, so it becomes a tree of its own. */
+function outdentSel(){
+  var e = index.get(sel);
+  if(!e || !e.parent) return toast("A tree root cannot move out any further");
+  var grand = index.get(e.parent.id);
+  if(!grand || !grand.parent) return detachSel();
+  pushUndo();
+  var i = e.parent.children.indexOf(e.node);
+  e.parent.children.splice(i, 1);
+  var pi = grand.parent.children.indexOf(e.parent);
+  grand.parent.children.splice(pi + 1, 0, e.node);
+  if(e.depth - 1 === 1 && !e.node.color) e.node.color = nextColorFor(grand.parent);
+  render(); touch();
+}
+
+/* A new node slotted in above this one, taking it as a child. */
+function addParentSel(){
+  var e = index.get(sel);
+  if(!e) return;
+  pushUndo();
+  var n = newNode("");
+  if(e.parent){
+    var i = e.parent.children.indexOf(e.node);
+    n.color = e.node.color;
+    e.node.color = null;
+    e.parent.children.splice(i, 1, n);
+    n.children.push(e.node);
+  }else{
+    /* the tree gets a new trunk and the old one hangs off it */
+    n.children.push(e.node);
+    if(!e.node.color) e.node.color = PALETTE[0];
+    e.tree.root = n;
+  }
+  selectOnly(n.id);
+  freshId = n.id;
+  render(); touch(); startEdit(sel);
+}
+
+function addSiblingAbove(){
+  var e = index.get(sel);
+  if(!e) return;
+  if(!e.parent) return addChild();
+  pushUndo();
+  var n = newNode("");
+  if(e.depth === 1) n.color = nextColorFor(e.parent);
+  e.parent.children.splice(e.parent.children.indexOf(e.node), 0, n);
+  selectOnly(n.id);
+  freshId = n.id;
+  render(); touch(); startEdit(sel);
+}
+
+/* deep clone with brand new ids, so a copy is never entangled with its source */
+function cloneNode(n){
+  var c = {
+    id: uid(), text: n.text, color: n.color || null, note: n.note || "",
+    icon: n.icon || "", link: n.link || "",
+    collapsed: !!n.collapsed, children: []
+  };
+  for(var i = 0; i < n.children.length; i++) c.children.push(cloneNode(n.children[i]));
+  return c;
+}
+
+function duplicateSel(){
+  var targets = outermostSelected();
+  if(!targets.length) return;
+  pushUndo();
+  var last = null;
+  targets.forEach(function(e){
+    var copy = cloneNode(e.node);
+    if(e.parent){
+      e.parent.children.splice(e.parent.children.indexOf(e.node) + 1, 0, copy);
+    }else{
+      board.trees.push({ id: uid(), x: e.tree.x + 60, y: e.tree.y + 60,
+                         dir: e.tree.dir || "right", root: copy });
+    }
+    last = copy.id;
+  });
+  selectOnly(last);
+  render(); touch();
+  toast(targets.length === 1 ? "Duplicated" : "Duplicated " + targets.length + " branches");
+}
+
+/* ============================================================
+   Inspector
+   ============================================================ */
+function buildSwatches(){
+  var box = $("#swatches");
+  box.innerHTML = "";
+  var auto = document.createElement("button");
+  auto.className = "sw auto";
+  auto.title = "Inherit from parent branch";
+  auto.addEventListener("click", function(){ setColor(null); });
+  box.appendChild(auto);
+  PALETTE.forEach(function(id, i){
+    var b = document.createElement("button");
+    b.className = "sw";
+    b.style.setProperty("--c", "var(--pal-" + id + ")");
+    b.dataset.color = id;
+    b.title = id.charAt(0).toUpperCase() + id.slice(1) + "  (" + (i+1) + ")";
+    b.addEventListener("click", function(){ setColor(id); });
+    box.appendChild(b);
+  });
+}
+function syncInspector(){
+  var insp = $("#inspector");
+  var e = sel ? index.get(sel) : null;
+  if(!e){ insp.classList.remove("on"); return; }
+  insp.classList.add("on");
+  var many = selSet.size > 1;
+  $("#insp-kicker").textContent = many
+    ? selSet.size + " selected"
+    : (e.depth === 0 ? "Tree root" : "Level " + e.depth);
+  $("#insp-title").textContent = many
+    ? "Colour, delete or duplicate them together"
+    : (e.node.text || "Untitled");
+  /* things that only make sense for one node at a time */
+  ["#dir-field", "#i-detach", "#i-child", "#i-icon", "#i-link"].forEach(function(s){
+    var el = $(s); if(!el) return;
+    if(el.tagName === "BUTTON") el.disabled = many; else el.style.opacity = many ? ".45" : "";
+  });
+  $("#note").disabled = many;
+  Array.prototype.forEach.call($("#swatches").children, function(sw){
+    sw.classList.toggle("on", (sw.dataset.color || null) === (e.node.color || null));
+  });
+  $("#dir-field").style.display = (e.depth === 0 && !many) ? "" : "none";
+  Array.prototype.forEach.call($("#dir-seg").children, function(b){
+    b.classList.toggle("on", b.dataset.dir === (e.tree.dir || "right"));
+  });
+  var note = $("#note");
+  if(document.activeElement !== note) note.value = e.node.note || "";
+  $("#stat-depth").textContent = e.node.children.length + (e.node.children.length===1?" child":" children");
+  $("#stat-desc").textContent = countDesc(e.node) + " in branch";
+  $("#i-collapse").textContent = e.node.collapsed ? "Expand" : "Collapse";
+  $("#i-collapse").disabled = !e.node.children.length;
+  $("#i-detach").disabled = many || !e.parent;
+  $("#i-collapse").disabled = many || !e.node.children.length;
+}
+
+/* ============================================================
+   Pointer interaction
+   ============================================================ */
+var spaceDown = false;
+var panning = null;
+var draggingEl = null, dragState = null;
+
+canvas.addEventListener("pointerdown", function(ev){
+  if(ev.button === 2) return;
+  var toggleBtn = ev.target.closest ? ev.target.closest("[data-toggle]") : null;
+  if(toggleBtn){ ev.preventDefault(); toggleCollapse(toggleBtn.dataset.toggle); return; }
+
+  var nodeEl = ev.target.closest ? ev.target.closest(".node") : null;
+
+  if(nodeEl && !spaceDown && ev.button === 0){
+    if(editingId && nodeEl.dataset.id === editingId) return;
+    commitEdit();
+    var id = nodeEl.dataset.id;
+    if(ev.shiftKey){
+      selectToggle(id);
+      render();
+      ev.preventDefault();
+      return;                       /* gathering a selection, not starting a drag */
+    }
+    if(!selSet.has(id)){ selectOnly(id); render(); }
+    var e = index.get(id);
+    if(!e) return;
+    dragState = {
+      id: id, moved: false,
+      sx: ev.clientX, sy: ev.clientY,
+      isRoot: !e.parent,
+      tree: e.tree,
+      tx: e.tree.x, ty: e.tree.y,
+      ox: e.node._x, oy: e.node._y,
+      pointerId: ev.pointerId
+    };
+    /* deliberately NOT capturing the pointer here. While a pointer is
+       captured the browser retargets the follow-up click and dblclick to
+       the capture element, so a double-click on a node would arrive as a
+       double-click on empty canvas and plant a new tree on top of it.
+       Capture is taken in pointermove, once a drag has really begun. */
+    ev.preventDefault();
+    return;
+  }
+
+  if(ev.button === 1 || spaceDown || !nodeEl){
+    if(!nodeEl){
+      commitEdit();
+      if(sel){ selectOnly(null); render(); }
+    }
+    panning = { sx: ev.clientX, sy: ev.clientY, vx: view.x, vy: view.y };
+    canvas.classList.add("panning");
+    try{ canvas.setPointerCapture(ev.pointerId); }catch(err){}
+    ev.preventDefault();
+  }
+});
+
+canvas.addEventListener("pointermove", function(ev){
+  if(panning){
+    view.x = panning.vx + (ev.clientX - panning.sx);
+    view.y = panning.vy + (ev.clientY - panning.sy);
+    applyView();
+    return;
+  }
+  if(!dragState) return;
+  var dx = ev.clientX - dragState.sx, dy = ev.clientY - dragState.sy;
+  if(!dragState.moved && Math.abs(dx) + Math.abs(dy) < 5) return;
+
+  if(!dragState.moved){
+    dragState.moved = true;
+    /* now that this is a real drag, hold the pointer so it survives
+       leaving the window - a plain click never gets here */
+    try{ canvas.setPointerCapture(dragState.pointerId); }catch(err){}
+    var e = index.get(dragState.id);
+    if(!dragState.isRoot){
+      draggingEl = e.el;
+      draggingEl.classList.add("dragging");
+      draggingEl.style.pointerEvents = "none";
+    }
+  }
+
+  if(dragState.isRoot){
+    dragState.tree._el.style.transform =
+      "translate(" + (dragState.tx + dx/view.z) + "px," + (dragState.ty + dy/view.z) + "px)";
+  }else{
+    draggingEl.style.transform =
+      "translate(" + (dragState.ox + dx/view.z) + "px," + (dragState.oy + dy/view.z) + "px)";
+    dragState.drop = findDropTarget(ev.clientX, ev.clientY, dragState.id);
+    showDropHint(dragState.drop);
+  }
+});
+
+/* ============================================================
+   Where a dragged branch will land
+   ------------------------------------------------------------
+   Aiming at a bare word is fiddly, so instead of demanding a
+   direct hit we take the nearest box the branch is allowed to
+   join and work out the intent from which side of it the
+   cursor is on:
+
+     past its outer edge  -> become its child (one level deeper)
+     above its middle     -> slot in above it, as a sibling
+     below its middle     -> slot in below it, as a sibling
+
+   Only a drop well clear of everything starts a new tree.
+   ============================================================ */
+var DROP_REACH = 150;    /* screen px from the edge of a box */
+
+function findDropTarget(cx, cy, dragId){
+  var best = null, bestD = Infinity;
+  index.forEach(function(e, id){
+    if(id === dragId || !canDrop(dragId, id)) return;
+    var r = e.el.getBoundingClientRect();
+    var dx = cx < r.left ? r.left - cx : (cx > r.right ? cx - r.right : 0);
+    var dy = cy < r.top ? r.top - cy : (cy > r.bottom ? cy - r.bottom : 0);
+    var d = Math.sqrt(dx*dx + dy*dy);
+    if(d < bestD){ bestD = d; best = { entry:e, rect:r }; }
+  });
+  if(!best || bestD > DROP_REACH) return null;
+
+  var e = best.entry, r = best.rect;
+  var sign = (e.node._sign || 1) > 0 ? 1 : -1;
+  var pastOuterEdge = sign > 0 ? (cx > r.right - 6) : (cx < r.left + 6);
+  if(pastOuterEdge || !e.parent) return { entry:e, mode:"child", rect:r };
+  return { entry:e, mode: cy < (r.top + r.bottom)/2 ? "before" : "after", rect:r };
+}
+
+function showDropHint(drop){
+  document.querySelectorAll(".node.drop").forEach(function(el){ el.classList.remove("drop"); });
+  var line = $("#dropline");
+  if(!drop){ line.classList.remove("on"); return; }
+  if(drop.mode === "child"){
+    drop.entry.el.classList.add("drop");
+    line.classList.remove("on");
+    return;
+  }
+  var cr = canvas.getBoundingClientRect();
+  var r = drop.rect;
+  var y = (drop.mode === "before" ? r.top - 5 : r.bottom + 5) - cr.top;
+  line.style.left = (r.left - cr.left) + "px";
+  line.style.top = y + "px";
+  line.style.width = Math.max(48, r.width) + "px";
+  line.classList.add("on");
+}
+function clearDropHint(){
+  document.querySelectorAll(".node.drop").forEach(function(el){ el.classList.remove("drop"); });
+  $("#dropline").classList.remove("on");
+}
+
+function canDrop(dragId, targetId){
+  if(dragId === targetId) return false;
+  var d = index.get(dragId), t = index.get(targetId);
+  if(!d || !t) return false;
+  var bad = false;
+  walkAll(d.node, function(n){ if(n.id === targetId) bad = true; });
+  return !bad;
+}
+
+canvas.addEventListener("pointerup", endPointer);
+canvas.addEventListener("pointercancel", endPointer);
+function endPointer(ev){
+  if(panning){
+    panning = null;
+    canvas.classList.remove("panning");
+    return;
+  }
+  if(!dragState) return;
+  var st = dragState; dragState = null;
+
+  if(!st.moved){
+    return;
+  }
+  if(st.isRoot){
+    pushUndo();
+    var dx = ev.clientX - st.sx, dy = ev.clientY - st.sy;
+    st.tree.x = st.tx + dx/view.z;
+    st.tree.y = st.ty + dy/view.z;
+    render(); touch();
+    return;
+  }
+  if(draggingEl){
+    draggingEl.classList.remove("dragging");
+    draggingEl.style.pointerEvents = "";
+    draggingEl = null;
+  }
+  clearDropHint();
+
+  var e = index.get(st.id);
+  if(!e){ render(); return; }
+  pushUndo();
+
+  var node = e.node;
+  var inheritedBefore = effProp(st.id);
+  e.parent.children.splice(e.parent.children.indexOf(node), 1);
+
+  var drop = st.drop;
+  if(drop){
+    var t = drop.entry;
+    var newDepth;
+    if(drop.mode === "child"){
+      t.node.collapsed = false;
+      t.node.children.push(node);
+      newDepth = t.depth + 1;
+    }else{
+      var sibs = t.parent.children;
+      var at = sibs.indexOf(t.node);
+      sibs.splice(drop.mode === "before" ? at : at + 1, 0, node);
+      newDepth = t.depth;
+    }
+    /* a branch takes on the colour of wherever it lands: a new first-level
+       branch gets its own pigment, a deeper one inherits from above */
+    if(newDepth === 1){
+      if(!node.color) node.color = nextColorFor(drop.mode === "child" ? t.node : t.parent);
+    }else{
+      node.color = null;
+    }
+  }else{
+    if(!node.color && inheritedBefore.indexOf("--pal-") === 0) node.color = inheritedBefore.slice(6);
+    var p = screenToBoard(ev.clientX, ev.clientY);
+    board.trees.push({ id:uid(), x:p.x, y:p.y, dir:"right", root:node });
+  }
+  selectOnly(node.id);
+  render(); touch();
+}
+
+canvas.addEventListener("dblclick", function(ev){
+  var nodeEl = nodeUnder(ev);
+  if(nodeEl){ selectOnly(nodeEl.dataset.id); render(); startEdit(sel); return; }
+  var p = screenToBoard(ev.clientX, ev.clientY);
+  addTreeAt(p.x, p.y, "");
+});
+
+/* Which node is under this event? ev.target is the fast path, but the
+   browser can hand back the canvas instead (pointer capture, a retargeted
+   compatibility event), so fall back to hit-testing the coordinates. */
+function nodeUnder(ev){
+  var el = ev.target && ev.target.closest ? ev.target.closest(".node") : null;
+  if(el) return el;
+  var hit = document.elementFromPoint(ev.clientX, ev.clientY);
+  return hit && hit.closest ? hit.closest(".node") : null;
+}
+
+canvas.addEventListener("wheel", function(ev){
+  ev.preventDefault();
+  if(ev.ctrlKey || ev.metaKey){
+    zoomAt(Math.pow(0.995, ev.deltaY), ev.clientX, ev.clientY);
+  }else{
+    view.x -= ev.deltaX; view.y -= ev.deltaY;
+    applyView();
+  }
+}, { passive:false });
+
+canvas.addEventListener("contextmenu", function(ev){
+  var nodeEl = ev.target.closest ? ev.target.closest(".node") : null;
+  if(!nodeEl) return;
+  ev.preventDefault();
+  selectOnly(nodeEl.dataset.id); render();
+  openMenu(nodeEl, [
+    { label:"Add child", icon:"M12 5v14M5 12h14", run:addChild },
+    { label:"Add sibling", icon:"M5 12h14", run:addSibling },
+    { label:index.get(sel).node.collapsed ? "Expand branch" : "Collapse branch", icon:"M6 9l6 6 6-6", run:function(){ toggleCollapse(sel); } },
+    { label:"Detach as tree", icon:"M9 7H5v12h12v-4M14 4h6v6M20 4l-9 9", run:detachSel },
+    { sep:true },
+    { label:"Delete branch", danger:true, icon:"M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13", run:deleteSel }
+  ]);
+});
+
+/* ============================================================
+   Keyboard
+   ============================================================ */
+function isTyping(el){
+  return el && (el.tagName === "TEXTAREA" || el.tagName === "INPUT" ||
+    el.isContentEditable);
+}
+document.addEventListener("keydown", function(ev){
+  if(ev.key === "Escape"){
+    if($("#importer").classList.contains("on")){ closeImporter(); return; }
+    if($("#sheet").classList.contains("on")){ $("#sheet").classList.remove("on"); return; }
+    if(searchOpen()){ closeSearch(); return; }
+    if(editingId){ commitEdit(); canvas.focus(); return; }
+    closeMenu();
+    if(sel){ selectOnly(null); render(); }
+    return;
+  }
+  if(!editorView.classList.contains("on")) return;
+
+  var boardName = $("#board-name");
+  if(document.activeElement === boardName){
+    if(ev.key === "Enter"){ ev.preventDefault(); boardName.blur(); }
+    return;
+  }
+
+  var meta = ev.ctrlKey || ev.metaKey;
+
+  /* ---- while typing into a box ---- */
+  if(editingId){
+    if(ev.key === "Enter" && meta){          /* sibling above */
+      ev.preventDefault();
+      var above = editingId; commitEdit(true); selectOnly(above); addSiblingAbove(); return;
+    }
+    if(ev.key === "Enter" && ev.altKey){     /* new parent */
+      ev.preventDefault();
+      var par = editingId; commitEdit(true); selectOnly(par); addParentSel(); return;
+    }
+    if(ev.key === "Enter" && !ev.shiftKey){
+      ev.preventDefault();
+      var cur = editingId; commitEdit(true); selectOnly(cur); addSibling(); return;
+    }
+    if(ev.key === "Tab"){
+      ev.preventDefault();
+      var cur2 = editingId; commitEdit(true); selectOnly(cur2); addChild(); return;
+    }
+    if(meta && ev.altKey && (ev.key === "]" || ev.key === "[")){
+      ev.preventDefault();
+      var ind = editingId; commitEdit();
+      selectOnly(ind);
+      ev.key === "]" ? indentSel() : outdentSel();
+      return;
+    }
+    if(meta && ev.key.toLowerCase() === "z"){
+      ev.preventDefault(); commitEdit(); ev.shiftKey ? redo() : undo();
+    }
+    return;
+  }
+
+  if(isTyping(document.activeElement)) return;
+
+  /* ---- undo / redo ---- */
+  if(meta && ev.key.toLowerCase() === "z"){ ev.preventDefault(); ev.shiftKey ? redo() : undo(); return; }
+  if(meta && ev.key.toLowerCase() === "y"){ ev.preventDefault(); redo(); return; }
+
+  /* ---- find ---- */
+  if(meta && ev.key.toLowerCase() === "f"){ ev.preventDefault(); openSearch(); return; }
+
+  /* ---- clipboard-ish ---- */
+  if(meta && ev.key.toLowerCase() === "d"){ ev.preventDefault(); duplicateSel(); return; }
+  if(meta && ev.key.toLowerCase() === "a"){
+    ev.preventDefault();
+    selSet.clear();
+    board.trees.forEach(function(t){ walkVisible(t.root, null, 0, function(n){ selSet.add(n.id); }); });
+    sel = selSet.size ? Array.from(selSet)[0] : null;
+    render();
+    return;
+  }
+
+  /* ---- restructuring ---- */
+  if(meta && ev.altKey && ev.key === "]"){ ev.preventDefault(); indentSel(); return; }
+  if(meta && ev.altKey && ev.key === "["){ ev.preventDefault(); outdentSel(); return; }
+  if(meta && ev.key === "/"){ ev.preventDefault(); if(sel) toggleCollapse(sel); return; }
+  if(meta && ev.key === "Enter"){ ev.preventDefault(); if(sel) addSiblingAbove(); return; }
+  if(ev.altKey && ev.key === "Enter"){ ev.preventDefault(); if(sel) addParentSel(); return; }
+
+  if(ev.key === " "){ spaceDown = true; canvas.classList.add("panready"); ev.preventDefault(); return; }
+
+  if(ev.key === "?" || (ev.shiftKey && ev.key === "/")){ ev.preventDefault(); $("#sheet").classList.toggle("on"); return; }
+
+  /* ---- zoom, following Whimsical ---- */
+  var r = canvas.getBoundingClientRect();
+  var mid = [r.left + r.width/2, r.top + r.height/2];
+  if(!meta && (ev.key === "=" || ev.key === "+")){ ev.preventDefault(); zoomAt(1.2, mid[0], mid[1]); return; }
+  if(!meta && ev.key === "-"){ ev.preventDefault(); zoomAt(1/1.2, mid[0], mid[1]); return; }
+  if(!meta && !ev.shiftKey && ev.key === "0"){ ev.preventDefault(); zoomTo(1); return; }
+  if(!meta && !ev.shiftKey && ev.key === "1"){ ev.preventDefault(); fitToScreen(); return; }
+  if(!meta && !ev.shiftKey && ev.key === "2"){ ev.preventDefault(); zoomToSelection(); return; }
+
+  /* ---- growing ---- */
+  if(ev.key === "Tab"){ ev.preventDefault(); if(sel) addChild(); return; }
+  if(ev.key === "Enter"){ ev.preventDefault(); if(sel) addSibling(); return; }
+  if(ev.key === "F2"){ ev.preventDefault(); if(sel) startEdit(sel); return; }
+  if(ev.key === "Delete" || ev.key === "Backspace"){ ev.preventDefault(); deleteSel(); return; }
+
+  /* ---- branch colours: Shift + 1..8 (plain digits belong to zoom) ---- */
+  if(ev.shiftKey && /^Digit[1-8]$/.test(ev.code || "")){
+    ev.preventDefault();
+    if(sel) setColor(PALETTE[parseInt(ev.code.slice(5), 10) - 1]);
+    return;
+  }
+  if(ev.shiftKey && (ev.code === "Digit0" || ev.key === ")")){
+    ev.preventDefault(); if(sel) setColor(null); return;
+  }
+  if(ev.shiftKey && ev.key.toLowerCase() === "x"){ ev.preventDefault(); if(sel) openIconPicker(); return; }
+  if(meta && ev.shiftKey && ev.key.toLowerCase() === "u"){ ev.preventDefault(); if(sel) promptLink(); return; }
+
+  if(meta || ev.altKey) return;
+
+  var k = ev.key.toLowerCase();
+  if(k === "m" || k === "t"){
+    ev.preventDefault();
+    var p = screenToBoard(mid[0], mid[1]);
+    addTreeAt(p.x, p.y, "");
+    return;
+  }
+  if(k === "c"){ ev.preventDefault(); if(sel) toggleCollapse(sel); return; }
+  if(k === "d"){ ev.preventDefault(); if(sel) detachSel(); return; }
+
+  if(ev.key.indexOf("Arrow") === 0 && sel){ ev.preventDefault(); navigate(ev.key); return; }
+});
+document.addEventListener("keyup", function(ev){
+  if(ev.key === " "){ spaceDown = false; canvas.classList.remove("panready"); }
+});
+
+function navigate(key){
+  var e = index.get(sel); if(!e) return;
+  var n = e.node, target = null;
+  var outward = (n._sign > 0) ? "ArrowRight" : "ArrowLeft";
+  var inward  = (n._sign > 0) ? "ArrowLeft" : "ArrowRight";
+
+  if(key === outward){
+    if(n.collapsed && n.children.length){ toggleCollapse(sel); return; }
+    if(n.children.length) target = n.children[0];
+  }else if(key === inward){
+    target = e.parent;
+  }else{
+    var sibs = e.parent ? e.parent.children.filter(function(c){ return c._sign === n._sign; }) : [];
+    var i = sibs.indexOf(n);
+    if(i > -1){
+      var j = key === "ArrowUp" ? i-1 : i+1;
+      if(j >= 0 && j < sibs.length) target = sibs[j];
+    }
+  }
+  if(!target) return;
+  var prev = index.get(sel); if(prev) prev.el.classList.remove("sel");
+  selectOnly(target.id);
+  var ne = index.get(sel);
+  if(ne){ ne.el.classList.add("sel"); ensureVisible(ne); }
+  syncInspector();
+}
+function ensureVisible(e){
+  var r = canvas.getBoundingClientRect();
+  var sx = e.tree.x + e.node._x, sy = e.tree.y + e.node._y;
+  var px = sx*view.z + view.x, py = sy*view.z + view.y;
+  var pad = 90;
+  var dx = 0, dy = 0;
+  if(px < pad) dx = pad - px;
+  if(px + e.node._w*view.z > r.width - pad) dx = (r.width - pad) - (px + e.node._w*view.z);
+  if(py < pad) dy = pad - py;
+  if(py + e.node._h*view.z > r.height - pad) dy = (r.height - pad) - (py + e.node._h*view.z);
+  if(dx || dy){ view.x += dx; view.y += dy; applyView(); }
+}
+
+/* ============================================================
+   Colour resolution for raster export
+   ============================================================ */
+function cssVal(prop){
+  return getComputedStyle(document.documentElement).getPropertyValue(prop).trim() || "#000000";
+}
+function toRgb(c){
+  if(c.charAt(0) === "#"){
+    var h = c.slice(1);
+    if(h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+  }
+  var m = c.match(/(\d+(\.\d+)?)/g);
+  return m ? [ +m[0], +m[1], +m[2] ] : [0,0,0];
+}
+function rgba(c, a){ var r = toRgb(c); return "rgba("+r[0]+","+r[1]+","+r[2]+","+a+")"; }
+function mixc(a, b, t){
+  var A = toRgb(a), B = toRgb(b);
+  return "rgb(" + Math.round(A[0]*t + B[0]*(1-t)) + "," +
+                  Math.round(A[1]*t + B[1]*(1-t)) + "," +
+                  Math.round(A[2]*t + B[2]*(1-t)) + ")";
+}
+
+var SPEC = {
+  0: { padX:16, padY:10, radius:12, font:"700 15.5px", lh:1.32 },
+  1: { padX:13, padY:7,  radius:9,  font:"600 14px",   lh:1.36 },
+  2: { padX:3,  padY:3,  radius:0,  font:"500 13.5px", lh:1.4  },
+  4: { padX:3,  padY:3,  radius:0,  font:"400 13px",   lh:1.4  }
+};
+function specFor(d){ return d===0?SPEC[0] : d===1?SPEC[1] : d>=4?SPEC[4] : SPEC[2]; }
+
+function wrapLines(ctx, text, maxW){
+  var out = [];
+  String(text).split("\n").forEach(function(para){
+    var words = para.split(/\s+/).filter(function(w){ return w.length; });
+    if(!words.length){ out.push(""); return; }
+    var line = words[0];
+    for(var i=1;i<words.length;i++){
+      var t = line + " " + words[i];
+      if(ctx.measureText(t).width <= maxW) line = t;
+      else { out.push(line); line = words[i]; }
+    }
+    out.push(line);
+  });
+  return out;
+}
+/* Read the rendered line boxes of a node's label, in board units relative
+   to the node's own top-left corner. Returns null when the label has no
+   plain text node to walk. */
+function domLines(nodeEl){
+  var lab = nodeEl.querySelector(".node-label");
+  var tn = lab && lab.firstChild;
+  if(!tn || tn.nodeType !== 3 || !tn.nodeValue.length) return null;
+  var s = tn.nodeValue;
+  var box = nodeEl.getBoundingClientRect();
+  var z = view.z || 1;
+  var range = document.createRange();
+  var out = [], start = 0, curTop = null;
+
+  function flush(end){
+    var a = start, b = end;
+    while(a < b && /\s/.test(s.charAt(a))) a++;
+    while(b > a && /\s/.test(s.charAt(b-1))) b--;
+    if(b <= a) return;
+    range.setStart(tn, a); range.setEnd(tn, b);
+    var rs = range.getClientRects();
+    if(!rs.length) return;
+    var r = rs[0];
+    out.push({ t: s.slice(a, b),
+               dx: (r.left - box.left)/z,
+               dy: (r.top + r.height/2 - box.top)/z });
+  }
+  for(var i=0;i<s.length;i++){
+    range.setStart(tn, i); range.setEnd(tn, i+1);
+    var rects = range.getClientRects();
+    if(!rects.length) continue;
+    var top = Math.round(rects[0].top * 100) / 100;
+    if(curTop === null){ curTop = top; }
+    else if(Math.abs(top - curTop) > 0.5){ flush(i); start = i; curTop = top; }
+  }
+  flush(s.length);
+  return out;
+}
+
+/* Icons and link chips sit beside the label. Read their drawn positions off
+   the live element so the image places them exactly where the canvas does. */
+function inlineBits(nodeEl){
+  var box = nodeEl.getBoundingClientRect();
+  var z = view.z || 1;
+  var out = [];
+  nodeEl.querySelectorAll(".node-icon, .node-link").forEach(function(el){
+    var r = el.getBoundingClientRect();
+    if(!r.width) return;
+    var cs = getComputedStyle(el);
+    out.push({
+      text: el.textContent,
+      dx: (r.left - box.left)/z,
+      dy: (r.top + r.height/2 - box.top)/z,
+      size: parseFloat(cs.fontSize) || 14,
+      color: cs.color,
+      emoji: el.classList.contains("node-icon")
+    });
+  });
+  return out;
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function renderPNG(){
+  var bb = boardBBox();
+  if(!bb){ toast("Nothing on the canvas yet"); return; }
+  var pad = 56, scale = 2;
+  var W = Math.ceil((bb.w + pad*2) * scale), H = Math.ceil((bb.h + pad*2) * scale);
+  if(W*H > 40e6){ scale = 1; W = Math.ceil(bb.w+pad*2); H = Math.ceil(bb.h+pad*2); }
+  var cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  var ctx = cv.getContext("2d");
+  ctx.scale(scale, scale);
+  ctx.translate(-bb.x + pad, -bb.y + pad);
+
+  var PAPER = cssVal("--paper"), SURFACE = cssVal("--surface"),
+      INK = cssVal("--ink"), INK2 = cssVal("--ink-2"), ONC = cssVal("--on-color");
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(bb.x - pad, bb.y - pad, bb.w + pad*2, bb.h + pad*2);
+
+  /* links first */
+  board.trees.forEach(function(tree){
+    walkVisible(tree.root, null, 0, function(n, parent, depth){
+      if(!parent) return;
+      var col = cssVal(effProp(n.id));
+      var sign = n._sign;
+      var pb = (depth-1) >= 2, cb = depth >= 2;
+      var px = tree.x + (sign>0 ? parent._x + parent._w : parent._x);
+      var py = tree.y + parent._y + (pb ? parent._h : parent._h/2);
+      var cx = tree.x + (sign>0 ? n._x : n._x + n._w);
+      var cy = tree.y + n._y + (cb ? n._h : n._h/2);
+      ctx.strokeStyle = rgba(col, 0.62);
+      ctx.lineWidth = depth===1 ? 2.2 : depth===2 ? 1.8 : 1.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(px,py);
+      if(board.lineStyle === "straight"){
+        var midX = px + (cx - px) * 0.5;
+        ctx.lineTo(midX, py); ctx.lineTo(midX, cy); ctx.lineTo(cx, cy);
+      }else{
+        var dx = Math.max(16, Math.abs(cx-px)*0.55) * sign;
+        ctx.bezierCurveTo(px+dx, py, cx-dx, cy, cx, cy);
+      }
+      ctx.stroke();
+    });
+  });
+
+  /* nodes */
+  board.trees.forEach(function(tree){
+    walkVisible(tree.root, null, 0, function(n, parent, depth){
+      var col = cssVal(effProp(n.id));
+      var sp = specFor(depth);
+      var x = tree.x + n._x, y = tree.y + n._y, w = n._w, h = n._h;
+      var textCol;
+      if(depth === 0){
+        ctx.fillStyle = col;
+        roundRect(ctx,x,y,w,h,sp.radius); ctx.fill();
+        textCol = ONC;
+      }else if(depth === 1){
+        ctx.fillStyle = mixc(col, SURFACE, 0.13);
+        roundRect(ctx,x,y,w,h,sp.radius); ctx.fill();
+        ctx.strokeStyle = rgba(col, 0.46); ctx.lineWidth = 1.5;
+        roundRect(ctx,x+0.75,y+0.75,w-1.5,h-1.5,sp.radius); ctx.stroke();
+        textCol = mixc(col, INK, 0.62);
+      }else{
+        ctx.strokeStyle = rgba(col, 0.52); ctx.lineWidth = 2; ctx.lineCap = "butt";
+        ctx.beginPath(); ctx.moveTo(x, y+h-1); ctx.lineTo(x+w, y+h-1); ctx.stroke();
+        textCol = depth >= 4 ? INK2 : INK;
+      }
+      var fontPx = parseFloat(sp.font.split(" ")[1]);
+      ctx.font = sp.font + "/1 'Public Sans', system-ui, sans-serif";
+      ctx.fillStyle = textCol;
+      ctx.textBaseline = "middle";
+      if("letterSpacing" in ctx) ctx.letterSpacing = depth === 0 ? "-0.155px" : "0px";
+
+      /* take the line breaks straight off the live element so the image
+         matches the canvas character for character */
+      var e = index.get(n.id);
+      var lines = e ? domLines(e.el) : null;
+      if(lines && lines.length){
+        lines.forEach(function(L){ ctx.fillText(L.t, x + L.dx, y + L.dy); });
+      }else{
+        var lineH = fontPx * sp.lh;
+        var startY = y + sp.padY + lineH/2;
+        wrapLines(ctx, n.text, w - sp.padX*2 + 2).forEach(function(ln, i){
+          ctx.fillText(ln, x + sp.padX, startY + i*lineH);
+        });
+      }
+      if("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+
+      if(e && (n.icon || n.link)){
+        inlineBits(e.el).forEach(function(bit){
+          ctx.font = bit.size + "px " + (bit.emoji
+            ? "'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif"
+            : "'Public Sans', system-ui, sans-serif");
+          ctx.fillStyle = bit.emoji ? INK : bit.color;
+          ctx.fillText(bit.text, x + bit.dx, y + bit.dy);
+        });
+      }
+    });
+  });
+
+  cv.toBlob(function(blob){
+    if(!blob){ toast("Could not render the image"); return; }
+    downloadFile(fileSafe(board.name) + ".png", blob);
+  }, "image/png");
+}
+
+/* ============================================================
+   Markdown / JSON export, downloads, import
+   ============================================================ */
+function fileSafe(s){
+  return String(s || "board").trim().replace(/[^\w\- ]+/g,"").replace(/\s+/g,"-").slice(0,60) || "board";
+}
+function toMarkdown(){
+  var out = ["# " + (board.name || "Untitled board"), ""];
+  board.trees.forEach(function(tree){
+    out.push("## " + (tree.root.text || "Untitled tree"));
+    if(tree.root.note) out.push("> " + tree.root.note.replace(/\n/g,"\n> "));
+    out.push("");
+    tree.root.children.forEach(function(c){ mdNode(c, 0, out); });
+    out.push("");
+  });
+  return out.join("\n");
+}
+function mdNode(n, indent, out){
+  var pad = new Array(indent*2 + 1).join(" ");
+  out.push(pad + "- " + (n.text || "").replace(/\n/g, " "));
+  if(n.note && n.note.trim()) out.push(pad + "  _" + n.note.replace(/\n/g," ") + "_");
+  n.children.forEach(function(c){ mdNode(c, indent+1, out); });
+}
+
+var downloadsNS;
+function getDownloads(){
+  if(downloadsNS !== undefined) return Promise.resolve(downloadsNS);
+  if(!(window.claude && window.claude.use)){ downloadsNS = null; return Promise.resolve(null); }
+  return window.claude.use("downloads").then(function(ns){ downloadsNS = ns || null; return downloadsNS; },
+                                             function(){ downloadsNS = null; return null; });
+}
+function fallbackDownload(filename, data){
+  try{
+    var blob = (data instanceof Blob) ? data : new Blob([data], {type:"text/plain"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    toast("Downloaded " + filename);
+  }catch(e){
+    toast("This view cannot save files");
+  }
+}
+function downloadFile(filename, data){
+  getDownloads().then(function(ns){
+    if(!ns) return fallbackDownload(filename, data);
+    ns.save({ filename: filename, data: data }).then(
+      function(){ toast("Saved " + filename); },
+      function(err){
+        if(err && err.code === "declined") return;
+        fallbackDownload(filename, data);
+      }
+    );
+  });
+}
+
+function importBoards(text){
+  var data;
+  try{ data = JSON.parse(text); }catch(e){ toast("That file is not valid JSON"); return; }
+  var list = data && data.board ? [data.board] : (data && Array.isArray(data.boards) ? data.boards : (data && data.trees ? [data] : null));
+  if(!list){ toast("No board found in that file"); return; }
+  var n = 0;
+  list.forEach(function(b){
+    if(!b || !Array.isArray(b.trees)) return;
+    b.id = uid();
+    b.createdAt = b.createdAt || Date.now();
+    b.updatedAt = Date.now();
+    b.trees.forEach(function(t){
+      t.id = uid();
+      t.x = t.x || 0; t.y = t.y || 0; t.dir = t.dir || "right";
+      walkAll(t.root, function(nd){
+        nd.id = uid();
+        nd.children = nd.children || [];
+        nd.text = nd.text || "";
+      });
+    });
+    db.boards.push(b); n++;
+  });
+  saveDB(); renderHome();
+  toast(n ? ("Imported " + n + (n===1?" board":" boards")) : "Nothing to import");
+}
+
+/* ============================================================
+   Wiring
+   ============================================================ */
+$("#new-btn").addEventListener("click", newBoard);
+$("#file-input").addEventListener("change", function(ev){
+  var f = ev.target.files && ev.target.files[0];
+  if(!f) return;
+  var fr = new FileReader();
+  fr.onload = function(){ importBoards(String(fr.result)); };
+  fr.readAsText(f);
+  ev.target.value = "";
+});
+
+$("#back-btn").addEventListener("click", function(){ saveDB(); showHome(); });
+$("#undo-btn").addEventListener("click", undo);
+$("#redo-btn").addEventListener("click", redo);
+$("#zoom-in").addEventListener("click", function(){ var r = canvas.getBoundingClientRect(); zoomAt(1.2, r.left+r.width/2, r.top+r.height/2); });
+$("#zoom-out").addEventListener("click", function(){ var r = canvas.getBoundingClientRect(); zoomAt(1/1.2, r.left+r.width/2, r.top+r.height/2); });
+$("#zoom-fit").addEventListener("click", function(){ fitToScreen(); });
+$("#add-tree").addEventListener("click", function(){
+  var r = canvas.getBoundingClientRect();
+  var p = screenToBoard(r.left + r.width*0.4, r.top + r.height/2);
+  addTreeAt(p.x, p.y, "");
+});
+$("#add-child").addEventListener("click", function(){ if(sel) addChild(); else toast("Select a node first"); });
+$("#add-sibling").addEventListener("click", function(){ if(sel) addSibling(); else toast("Select a node first"); });
+$("#help-btn").addEventListener("click", function(){ $("#sheet").classList.toggle("on"); });
+
+/* ---- board options ---- */
+$("#board-menu-btn").addEventListener("click", function(){
+  var straight = (board.lineStyle === "straight");
+  openMenu($("#board-menu-btn"), [
+    { label: straight ? "Use curved lines" : "Use straight lines",
+      icon: straight ? "M4 18c6 0 8-12 16-12" : "M4 18L20 6",
+      run: function(){
+        pushUndo();
+        board.lineStyle = straight ? "curved" : "straight";
+        render(); touch();
+        toast(straight ? "Curved lines" : "Straight lines");
+      }},
+    { label:"Tidy up the trees", icon:"M4 6h16M4 12h16M4 18h16", run:function(){
+        if(!board.trees.length) return toast("Nothing to tidy");
+        pushUndo();
+        var left = Math.min.apply(null, board.trees.map(function(t){ return t.x; }));
+        var top = Math.min.apply(null, board.trees.map(function(t){ return t.y; }));
+        arrangeTrees(board.trees, left, top);
+        render(); touch(); fitToScreen();
+        toast("Stacked " + board.trees.length + (board.trees.length === 1 ? " tree" : " trees"));
+      }},
+    { sep:true },
+    { label:"Find in this board", icon:"M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14M16 16l4 4", run:openSearch },
+    { label:"Keyboard shortcuts", icon:"M4 7h16v10H4zM8 11h.01M12 11h.01M16 11h.01M8 14h8", run:function(){ $("#sheet").classList.add("on"); } }
+  ]);
+});
+
+/* ---- find bar ---- */
+$("#search-input").addEventListener("input", runSearch);
+$("#search-input").addEventListener("keydown", function(ev){
+  if(ev.key === "Enter"){ ev.preventDefault(); stepSearch(ev.shiftKey ? -1 : 1); }
+  if(ev.key === "Escape"){ ev.preventDefault(); closeSearch(); }
+});
+$("#search-next").addEventListener("click", function(){ stepSearch(1); });
+$("#search-prev").addEventListener("click", function(){ stepSearch(-1); });
+$("#search-close").addEventListener("click", closeSearch);
+
+/* ---- icon + link ---- */
+$("#i-icon").addEventListener("click", openIconPicker);
+$("#i-link").addEventListener("click", promptLink);
+$("#ip-clear").addEventListener("click", function(){ setIcon(""); });
+document.addEventListener("pointerdown", function(ev){
+  var pick = $("#iconpick");
+  if(pick.classList.contains("on") && !pick.contains(ev.target) &&
+     ev.target !== $("#i-icon") && !$("#i-icon").contains(ev.target)) closeIconPicker();
+}, true);
+$("#sheet").addEventListener("click", function(ev){ if(ev.target === $("#sheet")) $("#sheet").classList.remove("on"); });
+
+$("#export-btn").addEventListener("click", function(){
+  openMenu($("#export-btn"), [
+    { label:"PNG image", icon:"M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5", run:renderPNG },
+    { label:"Markdown outline", icon:"M4 6h16M4 12h10M4 18h13", run:function(){
+        downloadFile(fileSafe(board.name)+".md", toMarkdown());
+      }},
+    { label:"JSON (re-importable)", icon:"M8 4H6a2 2 0 0 0-2 2v4l-2 2 2 2v4a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v4l2 2-2 2v4a2 2 0 0 1-2 2h-2", run:function(){
+        downloadFile(fileSafe(board.name)+".json", JSON.stringify({version:1, board:board}, clean, 2));
+      }}
+  ]);
+});
+
+var bn = $("#board-name");
+bn.addEventListener("input", function(){
+  if(!board) return;
+  board.name = bn.textContent.replace(/\n/g," ").trim() || "Untitled board";
+  touch();
+});
+bn.addEventListener("blur", function(){
+  if(!board) return;
+  if(!bn.textContent.trim()){ bn.textContent = board.name; }
+});
+
+$("#note").addEventListener("input", function(){
+  var e = sel ? index.get(sel) : null;
+  if(!e) return;
+  var had = !!(e.node.note && e.node.note.trim());
+  e.node.note = $("#note").value;
+  var has = !!e.node.note.trim();
+  if(had !== has){
+    var dot = e.el.querySelector(".dot-note");
+    if(has && !dot){ var d = document.createElement("i"); d.className = "dot-note"; e.el.appendChild(d); }
+    if(!has && dot) dot.remove();
+  }
+  touch();
+});
+Array.prototype.forEach.call($("#dir-seg").children, function(b){
+  b.addEventListener("click", function(){
+    var e = sel ? index.get(sel) : null;
+    if(!e) return;
+    pushUndo();
+    e.tree.dir = b.dataset.dir;
+    render(); touch();
+  });
+});
+$("#i-child").addEventListener("click", addChild);
+$("#i-collapse").addEventListener("click", function(){ toggleCollapse(sel); });
+$("#i-detach").addEventListener("click", detachSel);
+$("#i-delete").addEventListener("click", deleteSel);
+
+window.addEventListener("blur", function(){ spaceDown = false; canvas.classList.remove("panready"); });
+window.addEventListener("beforeunload", function(){
+  commitEdit();
+  if(store.mode === "folder"){
+    /* a normal fetch can be cut short by the closing tab, so hand the
+       last unsaved boards to the browser to deliver on our behalf */
+    db.boards.forEach(function(b){
+      var json = JSON.stringify(b, clean);
+      if(lastWritten.get(b.id) === json) return;
+      lastWritten.set(b.id, json);
+      try{
+        navigator.sendBeacon(api("boards/" + encodeURIComponent(b.id)),
+          new Blob([json], {type:"application/json"}));
+      }catch(e){}
+    });
+    return;
+  }
+  saveDB();
+});
+
+/* ============================================================
+   Zoom helpers
+   ============================================================ */
+function zoomTo(z){
+  var r = canvas.getBoundingClientRect();
+  zoomAt(z / view.z, r.left + r.width/2, r.top + r.height/2);
+}
+function zoomToSelection(){
+  var entries = selectedEntries();
+  if(!entries.length) return fitToScreen();
+  var minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9;
+  entries.forEach(function(e){
+    walkVisible(e.node, null, 0, function(n){
+      minX = Math.min(minX, e.tree.x + n._x);
+      minY = Math.min(minY, e.tree.y + n._y);
+      maxX = Math.max(maxX, e.tree.x + n._x + n._w);
+      maxY = Math.max(maxY, e.tree.y + n._y + n._h);
+    });
+  });
+  if(minX > maxX) return;
+  var r = canvas.getBoundingClientRect(), pad = 110;
+  var z = clamp(Math.min((r.width - pad*2)/(maxX-minX), (r.height - pad*2)/(maxY-minY)), 0.2, 2);
+  view.z = z;
+  view.x = (r.width - (maxX-minX)*z)/2 - minX*z;
+  view.y = (r.height - (maxY-minY)*z)/2 - minY*z;
+  applyView();
+}
+
+/* ============================================================
+   Find in board
+   ============================================================ */
+var hits = [], hitAt = -1;
+
+function searchOpen(){ return $("#searchbar").classList.contains("on"); }
+function openSearch(){
+  $("#searchbar").classList.add("on");
+  var i = $("#search-input");
+  i.focus(); i.select();
+  runSearch();
+}
+function closeSearch(){
+  $("#searchbar").classList.remove("on");
+  $("#search-input").value = "";
+  $("#search-input").blur();   /* otherwise focus stays in the box and every shortcut dies */
+  hits = []; hitAt = -1;
+  paintHits();
+}
+function runSearch(){
+  var q = $("#search-input").value.trim().toLowerCase();
+  hits = [];
+  if(q){
+    board.trees.forEach(function(tree){
+      walkAll(tree.root, function(n){
+        var hay = (n.text || "") + " " + (n.note || "");
+        if(hay.toLowerCase().indexOf(q) > -1) hits.push({ id:n.id, tree:tree, node:n });
+      });
+    });
+  }
+  hitAt = hits.length ? 0 : -1;
+  $("#search-count").textContent = q ? (hits.length ? (hitAt+1) + " of " + hits.length : "none") : "";
+  paintHits();
+  if(hits.length) revealHit(0);
+}
+function stepSearch(dir){
+  if(!hits.length) return;
+  hitAt = (hitAt + dir + hits.length) % hits.length;
+  $("#search-count").textContent = (hitAt+1) + " of " + hits.length;
+  revealHit(hitAt);
+}
+/* a match can be inside a collapsed branch - open the way to it */
+function revealHit(i){
+  var h = hits[i];
+  if(!h) return;
+  var opened = false;
+  board.trees.forEach(function(tree){
+    (function walk(n, chain){
+      if(n.id === h.id){
+        chain.forEach(function(a){ if(a.collapsed){ a.collapsed = false; opened = true; } });
+        return;
+      }
+      for(var k = 0; k < n.children.length; k++) walk(n.children[k], chain.concat([n]));
+    })(tree.root, []);
+  });
+  if(opened){ render(); touch(); }
+  paintHits();
+  var e = index.get(h.id);
+  if(e){ selectOnly(h.id); paintHits(); centreOn(e); syncInspector(); }
+}
+function paintHits(){
+  document.querySelectorAll(".node.hit, .node.hit-now").forEach(function(el){
+    el.classList.remove("hit", "hit-now");
+  });
+  hits.forEach(function(h, i){
+    var e = index.get(h.id);
+    if(e) e.el.classList.add(i === hitAt ? "hit-now" : "hit");
+  });
+}
+function centreOn(e){
+  var r = canvas.getBoundingClientRect();
+  var cx = e.tree.x + e.node._x + e.node._w/2;
+  var cy = e.tree.y + e.node._y + e.node._h/2;
+  view.x = r.width/2 - cx*view.z;
+  view.y = r.height/2 - cy*view.z;
+  applyView();
+}
+
+/* ============================================================
+   Icons and links on a node
+   ============================================================ */
+var ICONS = ("⭐️ ✅ ❌ ⚠️ 🔥 💡 ❓ ❗️ 📌 🎯 🚀 🧠 💬 📝 📅 ⏰ " +
+             "🔒 🔑 💰 📈 📉 🧩 🔧 🛠 🐛 🧪 📦 🚚 🏁 🏆 👍 👎 " +
+             "👤 👥 🏢 🌍 ☁️ 🔗 📎 📁 📄 🖼 🎨 🎵 ☕️ 🍀 ❤️ 💔 " +
+             "🟢 🟡 🔴 🔵 🟣 ⚫️ ⚪️ 🔺 🔻 ➕ ➖ ✏️ 🗑 ♻️ 🔁 ➡️").split(/\s+/).filter(Boolean);
+
+function buildIconGrid(){
+  var g = $("#ip-grid");
+  if(g.childElementCount) return;
+  ICONS.forEach(function(ic){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.textContent = ic;
+    b.title = ic;
+    b.addEventListener("click", function(){ setIcon(ic); });
+    g.appendChild(b);
+  });
+}
+function setIcon(ic){
+  var entries = selectedEntries();
+  if(!entries.length) return;
+  pushUndo();
+  entries.forEach(function(e){ e.node.icon = ic || ""; });
+  closeIconPicker();
+  render(); touch();
+}
+function openIconPicker(){
+  var e = index.get(sel);
+  if(!e) return;
+  buildIconGrid();
+  var pick = $("#iconpick");
+  pick.classList.add("on");
+  var r = e.el.getBoundingClientRect();
+  var cr = canvas.getBoundingClientRect();
+  var w = pick.offsetWidth, h = pick.offsetHeight;
+  pick.style.left = clamp(r.left - cr.left, 8, cr.width - w - 8) + "px";
+  pick.style.top = clamp(r.bottom - cr.top + 8, 8, cr.height - h - 8) + "px";
+}
+function closeIconPicker(){ $("#iconpick").classList.remove("on"); }
+
+function promptLink(){
+  var e = index.get(sel);
+  if(!e) return;
+  var current = e.node.link || "";
+  var url = window.prompt("Link for “" + (e.node.text || "this node") + "”\n\nLeave empty to remove it.", current);
+  if(url === null) return;
+  url = url.trim();
+  if(url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+  if(url && !/^https?:\/\/[^\s]+$/i.test(url)) return toast("That does not look like a web address");
+  pushUndo();
+  e.node.link = url;
+  render(); touch();
+  toast(url ? "Link added" : "Link removed");
+}
+
+/* ============================================================
+   Copy, cut and paste whole branches
+   ------------------------------------------------------------
+   The clipboard carries the branch as an outline so it pastes
+   into any other app as readable text. A private copy is kept
+   in memory too, so pasting back into Branchboard keeps colours,
+   icons, links and notes that plain text cannot carry.
+   ============================================================ */
+var clipNodes = null, clipText = "";
+
+function branchToOutline(node, depth, out){
+  out.push(new Array(depth + 1).join("  ") + (node.text || ""));
+  node.children.forEach(function(c){ branchToOutline(c, depth + 1, out); });
+  return out;
+}
+function copySelection(cut){
+  var targets = outermostSelected();
+  if(!targets.length) return false;
+  var lines = [];
+  clipNodes = targets.map(function(e){
+    branchToOutline(e.node, 0, lines);
+    return cloneNode(e.node);
+  });
+  clipText = lines.join("\n");
+  if(cut) deleteSel();
+  return true;
+}
+function pasteInto(text){
+  var e = index.get(sel);
+  var useInternal = clipNodes && clipNodes.length && text.trim() === clipText.trim();
+  var incoming;
+  if(useInternal){
+    incoming = clipNodes.map(cloneNode);
+  }else{
+    var parsed = parseOutline(text);
+    if(!parsed) return toast("Nothing in the clipboard to paste");
+    incoming = parsed.trees.map(function(t){ return t.root; });
+  }
+  pushUndo();
+  if(e){
+    e.node.collapsed = false;
+    incoming.forEach(function(n){
+      if(e.depth === 0 && !n.color) n.color = nextColorFor(e.node);
+      e.node.children.push(n);
+    });
+    selectOnly(incoming[incoming.length - 1].id);
+  }else{
+    var r = canvas.getBoundingClientRect();
+    var p = screenToBoard(r.left + r.width/2, r.top + r.height/2);
+    var trees = incoming.map(function(n){
+      return { id: uid(), x: p.x, y: p.y, dir: "right", root: n };
+    });
+    board.trees = board.trees.concat(trees);
+    arrangeTrees(trees, p.x, p.y);
+    selectOnly(trees[0].root.id);
+  }
+  render(); touch();
+  var total = 0;
+  incoming.forEach(function(n){ total += countAll(n); });
+  toast("Pasted " + total + (total === 1 ? " node" : " nodes"));
+}
+
+document.addEventListener("copy", function(ev){
+  if(!editorView.classList.contains("on") || editingId || isTyping(document.activeElement)) return;
+  if(!copySelection(false)) return;
+  ev.clipboardData.setData("text/plain", clipText);
+  ev.preventDefault();
+  toast("Copied");
+});
+document.addEventListener("cut", function(ev){
+  if(!editorView.classList.contains("on") || editingId || isTyping(document.activeElement)) return;
+  var text = clipText;
+  if(!copySelection(true)) return;
+  ev.clipboardData.setData("text/plain", clipText || text);
+  ev.preventDefault();
+  toast("Cut");
+});
+document.addEventListener("paste", function(ev){
+  if(!editorView.classList.contains("on") || editingId || isTyping(document.activeElement)) return;
+  var text = ev.clipboardData ? ev.clipboardData.getData("text/plain") : "";
+  if(!text || !text.trim()) return;
+  ev.preventDefault();
+  pasteInto(text);
+});
+
+/* ============================================================
+   Outline -> board
+   ------------------------------------------------------------
+   Reads indented text. Indentation is the structure; bullets,
+   numbering and Markdown hashes are decoration and get stripped.
+   A line at the far left starts a new tree, so one outline can
+   describe a whole board.
+   ============================================================ */
+var BULLET = /^\s*(?:[-*+•·‣▪◦⁃>]|\d+[.)]|[a-z][.)])\s+/i;
+var HEADING = /^(#{1,6})\s+(.*)$/;
+
+function parseOutline(text){
+  var raw = String(text || "").replace(/\r\n?/g, "\n").split("\n");
+  var rows = [], i;
+
+  /* pass 1 — strip decoration, remember how deeply each line was indented */
+  for(i = 0; i < raw.length; i++){
+    var line = raw[i];
+    if(!line.trim()) continue;
+    var h = HEADING.exec(line.trim());
+    if(h){
+      var htext = h[2].trim();
+      if(htext) rows.push({ heading: h[1].length, spaces: 0, text: htext });
+      continue;
+    }
+    var lead = /^[ \t]*/.exec(line)[0].replace(/\t/g, "    ");
+    var body = line.slice(/^[ \t]*/.exec(line)[0].length);
+    var b = BULLET.exec(body);
+    if(b) body = body.slice(b[0].length);
+    body = body.replace(/\s+$/, "");
+    if(!body) continue;
+    rows.push({ heading: 0, spaces: lead.length, text: body });
+  }
+  if(!rows.length) return null;
+
+  /* pass 2 — work out one indent step from the smallest one actually used */
+  var unit = 0;
+  for(i = 0; i < rows.length; i++){
+    if(rows[i].spaces > 0 && (unit === 0 || rows[i].spaces < unit)) unit = rows[i].spaces;
+  }
+  if(!unit) unit = 2;
+
+  /* a lone top "# Title" above deeper headings is the board's name,
+     which is exactly what our own Markdown export writes */
+  var headings = rows.filter(function(r){ return r.heading; });
+  var boardName = null;
+  if(headings.length > 1 && headings[0].heading === 1 &&
+     headings.some(function(r){ return r.heading > 1; })){
+    boardName = headings[0].text;
+    rows.splice(rows.indexOf(headings[0]), 1);
+  }
+  var usingHeadings = rows.some(function(r){ return r.heading; });
+
+  /* pass 3 — build */
+  var trees = [], stack = [];
+  for(i = 0; i < rows.length; i++){
+    var r = rows[i];
+    var depth = r.heading ? 0 : Math.round(r.spaces / unit) + (usingHeadings ? 1 : 0);
+    if(depth > stack.length) depth = stack.length;   /* a jump inward is pulled back to the next real level */
+    var node = newNode(r.text);
+    if(depth === 0){
+      trees.push({ id: uid(), x:0, y:0, dir:"right", root: node });
+      stack = [node];
+    }else{
+      var parent = stack[depth - 1];
+      if(!parent){ trees.push({ id: uid(), x:0, y:0, dir:"right", root: node }); stack = [node]; continue; }
+      if(depth === 1 && !node.color) node.color = nextColorFor(parent);
+      parent.children.push(node);
+      stack = stack.slice(0, depth);
+      stack.push(node);
+    }
+  }
+  if(!trees.length) return null;
+  arrangeTrees(trees, 0, 0);
+  return { name: boardName, trees: trees };
+}
+
+/* stack trees down the canvas so an imported board opens tidy */
+function arrangeTrees(trees, startX, startY){
+  var y = startY;
+  trees.forEach(function(t){
+    t.x = startX; t.y = 0;
+    layoutTree(t);
+    var top = 1e9, bottom = -1e9;
+    walkVisible(t.root, null, 0, function(n){
+      top = Math.min(top, n._y);
+      bottom = Math.max(bottom, n._y + n._h);
+    });
+    if(top > bottom){ top = 0; bottom = 0; }
+    t.y = y - top;
+    y += (bottom - top) + 90;
+  });
+}
+
+function outlineTally(parsed){
+  if(!parsed) return { trees:0, nodes:0, depth:0 };
+  var nodes = 0, depth = 0;
+  parsed.trees.forEach(function(t){
+    walkAll(t.root, function(n, d){ nodes++; depth = Math.max(depth, d + 1); });
+  });
+  return { trees: parsed.trees.length, nodes: nodes, depth: depth };
+}
+
+/* ============================================================
+   Where boards live
+   ------------------------------------------------------------
+   Two backends, picked automatically at start-up:
+
+   "folder"  — the page is being served by the little Branchboard
+               starter, so every board is a real .json file in the
+               boards folder next to the app.
+   "browser" — the page was opened on its own (double-clicked, or
+               as a hosted page). Boards live in this browser's
+               storage; Export is how you get a copy on disk.
+   ============================================================ */
+var store = { mode:"browser", dir:"" };
+var lastWritten = new Map();
+var diskWarned = false;
+
+function api(p){ return "api/" + p; }
+
+function bootStorage(){
+  var done = function(){ renderHome(); updateStorageNote(); };
+  var fallback = function(){ loadDB(); done(); };
+
+  var timeout = new Promise(function(res){ setTimeout(function(){ res(null); }, 2500); });
+  var ping = fetch(api("ping"), { cache:"no-store" })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .catch(function(){ return null; });
+
+  Promise.race([ping, timeout]).then(function(info){
+    if(!(info && info.ok)) return fallback();
+    store.mode = "folder";
+    store.dir = info.dir || "";
+    return fetch(api("boards"), { cache:"no-store" })
+      .then(function(r){ return r.json(); })
+      .then(function(list){
+        db = { boards: Array.isArray(list) ? list : [] };
+        db.boards.forEach(function(b){ lastWritten.set(b.id, JSON.stringify(b, clean)); });
+        if(!db.boards.length){ db.boards.push(sampleBoard()); saveDB(); }
+        done();
+      })
+      .catch(fallback);
+  }).catch(fallback);
+}
+
+function saveToFolder(){
+  db.boards.forEach(function(b){
+    var json = JSON.stringify(b, clean);
+    if(lastWritten.get(b.id) === json) return;
+    lastWritten.set(b.id, json);
+    fetch(api("boards/" + encodeURIComponent(b.id)), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: json
+    }).then(function(r){
+      if(!r.ok) throw new Error("write failed");
+    }).catch(function(){
+      lastWritten.delete(b.id);   /* so the next save retries */
+      warnDisk();
+    });
+  });
+}
+function forgetBoardFile(id){
+  if(store.mode !== "folder") return;
+  lastWritten.delete(id);
+  fetch(api("boards/" + encodeURIComponent(id)), { method:"DELETE" }).catch(warnDisk);
+}
+function warnDisk(){
+  if(diskWarned) return;
+  diskWarned = true;
+  toast("Could not reach the boards folder — is the Branchboard window still open?");
+  setTimeout(function(){ diskWarned = false; }, 8000);
+}
+function updateStorageNote(){
+  var el = $("#store-note");
+  if(!el) return;
+  el.innerHTML = "";
+  var dot = document.createElement("i");
+  var txt = document.createElement("span");
+  if(store.mode === "folder"){
+    dot.className = "dot ok";
+    txt.textContent = store.dir ? "Saving to " + store.dir : "Saving to your boards folder";
+    el.title = "Every board is its own .json file in this folder. Back it up, sync it, edit it — it is yours.";
+  }else{
+    dot.className = "dot";
+    txt.textContent = "Saving in this browser";
+    el.title = "Boards live in this browser's storage on this computer. Use Export inside a board to keep a copy on disk.";
+  }
+  el.appendChild(dot); el.appendChild(txt);
+}
+
+/* ============================================================
+   Importing a picture
+   ------------------------------------------------------------
+   Reading a photo or screenshot of a mind map means recognising
+   the words AND working out which box hangs off which. Only a
+   vision model does that reliably, so the picture is sent to
+   Claude by the local starter, which holds the API key. The
+   answer comes back as an outline you can read and correct
+   before any board is made.
+   ============================================================ */
+var vision = { ready:false, reason:"unavailable", model:"" };
+var picked = null;          /* {name, size, mediaType, data, url} */
+var impTab = "picture";
+var impParsed = null;
+
+function checkVision(){
+  if(store.mode !== "folder"){ vision.ready = false; vision.reason = "no-server"; return Promise.resolve(); }
+  return fetch(api("vision/status"), { cache:"no-store" })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(info){
+      vision.ready = !!(info && info.available);
+      vision.reason = info ? (info.reason || "") : "no-server";
+      vision.model = info ? (info.model || "") : "";
+    })
+    .catch(function(){ vision.ready = false; vision.reason = "no-server"; });
+}
+
+/* Claude reads images best at about 1568px on the long edge, and a
+   smaller picture is a cheaper, faster request. */
+function prepareImage(file){
+  return new Promise(function(resolve, reject){
+    if(!/^image\//.test(file.type)) return reject(new Error("That file is not a picture."));
+    if(file.size > 24 * 1024 * 1024) return reject(new Error("That picture is larger than 24 MB."));
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function(){
+      var MAX = 1568;
+      var scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+      var w = Math.max(1, Math.round(img.naturalWidth * scale));
+      var h = Math.max(1, Math.round(img.naturalHeight * scale));
+      var cv = document.createElement("canvas");
+      cv.width = w; cv.height = h;
+      var ctx = cv.getContext("2d");
+      ctx.imageSmoothingQuality = "high";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);          /* transparent PNGs read badly without a ground */
+      ctx.drawImage(img, 0, 0, w, h);
+      var dataUrl = cv.toDataURL("image/png");
+      resolve({
+        name: file.name,
+        size: file.size,
+        mediaType: "image/png",
+        data: dataUrl.slice(dataUrl.indexOf(",") + 1),
+        url: url,
+        dims: w + "x" + h
+      });
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("That picture could not be opened.")); };
+    img.src = url;
+  });
+}
+
+function readPicture(){
+  if(!picked) return;
+  impStatus("busy", "Claude is reading the picture — this usually takes a few seconds.");
+  $("#imp-read").disabled = true;
+  fetch(api("vision"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mediaType: picked.mediaType, data: picked.data })
+  }).then(function(r){
+    return r.json().then(function(j){ return { ok: r.ok, body: j }; });
+  }).then(function(res){
+    $("#imp-read").disabled = false;
+    if(!res.ok || !res.body || res.body.error){
+      return impStatus("bad", (res.body && res.body.error) || "The request failed.");
+    }
+    var outline = String(res.body.outline || "").trim();
+    if(!outline) return impStatus("bad", "Claude could not find a mind map in that picture.");
+    $("#outline").value = outline;
+    showTab("outline");
+    refreshTally();
+    var t = outlineTally(impParsed);
+    impStatus("good", "Read " + t.nodes + " nodes.");
+    toast("Read " + t.nodes + " nodes — check the text before creating the board");
+  }).catch(function(){
+    $("#imp-read").disabled = false;
+    impStatus("bad", "Could not reach the Branchboard window. Is it still open?");
+  });
+}
+
+function impStatus(kind, msg){
+  var el = $("#vision-status");
+  el.style.display = "flex";
+  el.className = "status" + (kind === "bad" ? " bad" : kind === "good" ? " good" : "");
+  el.innerHTML = "";
+  if(kind === "busy"){
+    var s = document.createElement("i"); s.className = "spin"; el.appendChild(s);
+  }
+  var t = document.createElement("span"); t.textContent = msg; el.appendChild(t);
+}
+
+var COPY_PROMPT =
+  "Here is a picture of a mind map. Write it out as an indented outline and nothing else.\n" +
+  "Use two spaces per level. One line per node. No bullets, no numbering, no commentary.\n" +
+  "Every separate map in the picture starts again at the far left.";
+
+function visionNote(){
+  var el = $("#vision-note");
+  if(vision.ready){ el.style.display = "none"; return; }
+  el.style.display = "block";
+  var why;
+  if(vision.reason === "no-server"){
+    why = "<b>Branchboard is running as a plain file.</b> Reading pictures needs the starter, because the key that talks to Claude has to be kept out of the browser. Close this, run <code>Start Branchboard.bat</code>, and come back.";
+  }else if(vision.reason === "no-key"){
+    why = "<b>No API key yet.</b> Put your Anthropic key in a file called <code>apikey.txt</code> next to <code>Branchboard.html</code>, then restart the starter. This is the Anthropic API, billed separately from a Claude subscription — Pro and Max do not include it. Get one at console.anthropic.com; a picture costs a few cents.";
+  }else if(vision.reason === "no-sdk"){
+    why = "<b>The Anthropic library is missing from the folder.</b> Run <code>npm install @anthropic-ai/sdk</code> inside the Branchboard folder, then restart the starter.";
+  }else{
+    why = "<b>Picture reading is not available right now.</b>";
+  }
+  el.innerHTML = why +
+    "<br><br>In the meantime: drop the picture into your Claude chat with the message below, then paste what comes back into the <b>From an outline</b> tab." +
+    "<br><br><button class='btn ghost' id='copy-prompt' style='height:30px;font-size:12.5px'>Copy that message</button>";
+  var btn = $("#copy-prompt");
+  if(btn) btn.addEventListener("click", function(){
+    navigator.clipboard.writeText(COPY_PROMPT).then(
+      function(){ toast("Copied — paste it into Claude with your picture"); },
+      function(){ toast("Could not reach the clipboard"); }
+    );
+  });
+}
+
+/* ---------- modal plumbing ---------- */
+
+function openImporter(tab){
+  impParsed = null;
+  clearPicked();
+  $("#outline").value = "";
+  $("#vision-status").style.display = "none";
+  $("#importer").classList.add("on");
+  checkVision().then(function(){
+    visionNote();
+    showTab(tab || "picture");
+  });
+}
+function closeImporter(){
+  $("#importer").classList.remove("on");
+  clearPicked();
+}
+function showTab(tab){
+  impTab = tab;
+  Array.prototype.forEach.call($("#importer").querySelectorAll(".imp-tabs button"), function(b){
+    b.classList.toggle("on", b.dataset.tab === tab);
+  });
+  $("#pane-picture").style.display = tab === "picture" ? "flex" : "none";
+  $("#pane-outline").style.display = tab === "outline" ? "flex" : "none";
+  $("#imp-read").style.display = (tab === "picture" && vision.ready) ? "" : "none";
+  $("#imp-read").disabled = !picked;
+  $("#imp-title").textContent = tab === "picture" ? "Import a picture" : "Import an outline";
+  $("#imp-lede").textContent = tab === "picture"
+    ? "A photo or screenshot of a mind map. Claude reads it into an outline, you check the outline, then it becomes a board."
+    : "Indented text becomes a board. Indentation is the structure; a line at the far left starts a new tree.";
+  refreshTally();
+}
+function clearPicked(){
+  if(picked && picked.url) URL.revokeObjectURL(picked.url);
+  picked = null;
+  $("#shot").style.display = "none";
+  $("#drop").style.display = "";
+  $("#imp-read").disabled = true;
+}
+function acceptFile(file){
+  if(!file) return;
+  prepareImage(file).then(function(p){
+    clearPicked();
+    picked = p;
+    $("#shot-img").src = p.url;
+    $("#shot-name").textContent = p.name;
+    $("#shot-size").textContent = Math.round(p.size / 1024) + " KB  ·  sent at " + p.dims;
+    $("#shot").style.display = "flex";
+    $("#drop").style.display = "none";
+    $("#imp-read").disabled = !vision.ready;
+    if(vision.ready){ impStatus("", "Ready. Press “Read the picture”."); readPicture(); }
+  }).catch(function(err){ impStatus("bad", err.message); });
+}
+function refreshTally(){
+  impParsed = parseOutline($("#outline").value);
+  var t = outlineTally(impParsed);
+  $("#tally").innerHTML = impParsed
+    ? "<span><b>" + t.trees + "</b> " + (t.trees === 1 ? "tree" : "trees") + "</span>" +
+      "<span><b>" + t.nodes + "</b> nodes</span>" +
+      "<span><b>" + t.depth + "</b> levels deep</span>"
+    : "<span>Nothing to build yet</span>";
+  $("#imp-create").disabled = !impParsed;
+}
+
+$("#import-btn").addEventListener("click", function(){
+  openMenu($("#import-btn"), [
+    { label:"Picture of a mind map…", icon:"M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5", run:function(){ openImporter("picture"); } },
+    { label:"Outline or Markdown…", icon:"M4 6h16M4 12h10M4 18h13", run:function(){ openImporter("outline"); } },
+    { sep:true },
+    { label:"Board file (.json)", icon:"M8 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-5-5z", run:function(){ $("#file-input").click(); } }
+  ]);
+});
+
+Array.prototype.forEach.call($("#importer").querySelectorAll(".imp-tabs button"), function(b){
+  b.addEventListener("click", function(){ showTab(b.dataset.tab); });
+});
+$("#imp-cancel").addEventListener("click", closeImporter);
+$("#importer").addEventListener("click", function(ev){ if(ev.target === $("#importer")) closeImporter(); });
+$("#imp-read").addEventListener("click", readPicture);
+$("#outline").addEventListener("input", refreshTally);
+
+$("#drop").addEventListener("click", function(){ $("#image-input").click(); });
+$("#shot-clear").addEventListener("click", function(){ clearPicked(); $("#image-input").click(); });
+$("#image-input").addEventListener("change", function(ev){
+  acceptFile(ev.target.files && ev.target.files[0]);
+  ev.target.value = "";
+});
+["dragenter","dragover"].forEach(function(t){
+  $("#drop").addEventListener(t, function(ev){ ev.preventDefault(); $("#drop").classList.add("hot"); });
+});
+["dragleave","drop"].forEach(function(t){
+  $("#drop").addEventListener(t, function(ev){ ev.preventDefault(); $("#drop").classList.remove("hot"); });
+});
+$("#drop").addEventListener("drop", function(ev){
+  var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+  acceptFile(f);
+});
+
+$("#imp-create").addEventListener("click", function(){
+  var parsed = parseOutline($("#outline").value);
+  if(!parsed) return;
+  var b = {
+    id: uid(),
+    name: parsed.name || parsed.trees[0].root.text ||
+          (picked ? picked.name.replace(/\.[a-z0-9]+$/i, "") : "") || "Imported board",
+    createdAt: Date.now(), updatedAt: Date.now(),
+    view: null,
+    trees: parsed.trees
+  };
+  db.boards.push(b);
+  saveDB();
+  closeImporter();
+  openBoard(b.id);
+  var t = outlineTally(parsed);
+  toast("Built " + t.nodes + " nodes across " + t.trees + (t.trees === 1 ? " tree" : " trees"));
+});
+
+/* ============================================================
+   Boot
+   ============================================================ */
+buildSwatches();
+bootStorage();
+
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(function(){
+    mcache.clear();
+    if(board) render(); else renderHome();
+  });
+}
+})();
+</script>
+
+</html>

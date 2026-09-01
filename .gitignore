@@ -1,0 +1,16 @@
+# Your mind maps. Personal by definition - never commit these.
+boards/
+
+# Your Anthropic API key, if you add one.
+apikey.txt
+
+# Installed by `npm install`, not source.
+node_modules/
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.vscode/
+.idea/

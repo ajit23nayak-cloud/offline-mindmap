@@ -1,0 +1,14 @@
+{
+  "name": "branchboard",
+  "version": "1.0.0",
+  "description": "Mind maps on a canvas, kept as plain files on your own computer.",
+  "license": "MIT",
+  "private": false,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "^0.121.0"
+  }
+}
