@@ -554,6 +554,27 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
   min-width:52px;text-align:right;
 }
 
+/* ---------- the style bar that floats over a box being typed into ---------- */
+#formatbar{
+  display:none;z-index:40;padding:4px;gap:2px;
+}
+#formatbar.on{display:flex}
+#formatbar .fmt{
+  width:28px;height:28px;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13.5px;color:var(--ink-2);line-height:1;
+}
+#formatbar .fmt.wide{font-size:15px}
+#formatbar .fmt:hover{background:var(--surface-2);color:var(--ink)}
+#formatbar .fmt.on{background:var(--accent-soft);color:var(--accent)}
+#formatbar .fmt b,#formatbar .fmt i,#formatbar .fmt u{font-family:var(--font-display)}
+#formatbar .divider{height:16px;margin:0 2px}
+
+/* emphasis inside a box */
+.node-label b,.node-label strong{font-weight:800}
+.node-label i,.node-label em{font-style:italic}
+.node-label u{text-underline-offset:2px;text-decoration-thickness:1.5px}
+
 /* ---------- icon picker ---------- */
 #iconpick{
   position:absolute;z-index:60;display:none;
@@ -781,6 +802,15 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 
   <div id="dropline" aria-hidden="true"></div>
 
+  <div class="bar" id="formatbar" role="toolbar" aria-label="Text style">
+    <button class="fmt" id="fmt-bold" title="Bold (Ctrl+B)"><b>B</b></button>
+    <button class="fmt" id="fmt-italic" title="Italic (Ctrl+I)"><i>I</i></button>
+    <button class="fmt" id="fmt-underline" title="Underline (Ctrl+U)"><u>U</u></button>
+    <span class="divider"></span>
+    <button class="fmt wide" id="fmt-emoji" title="Insert an emoji (Ctrl+E)">&#128512;</button>
+    <button class="fmt wide" id="fmt-clear" title="Remove styling">&#10005;</button>
+  </div>
+
   <div id="iconpick" role="dialog" aria-label="Choose an icon">
     <div class="ip-grid" id="ip-grid"></div>
     <button class="btn ghost" id="ip-clear">Remove icon</button>
@@ -869,6 +899,8 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
           <li><span>New tree</span> <span class="kbd">M</span></li>
           <li><span>Edit text</span> <span class="kbd">F2</span></li>
           <li><span>Line break while editing</span> <span class="kbd">Shift + Enter</span></li>
+          <li><span>Bold / italic / underline</span> <span class="kbd">Ctrl + B / I / U</span></li>
+          <li><span>Emoji into the words</span> <span class="kbd">Ctrl + E</span></li>
           <li><span>Delete</span> <span class="kbd">Delete</span></li>
           <li><span>Duplicate</span> <span class="kbd">Ctrl + D</span></li>
           <li><span>Detach as new tree</span> <span class="kbd">D</span></li>
@@ -975,6 +1007,193 @@ function $(s){ return document.querySelector(s); }
 function clamp(v,a,b){ return v<a?a:v>b?b:v; }
 function clean(k,v){ return k.charAt(0)==="_" ? undefined : v; }
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+
+/* ============================================================
+   Text formatting
+   ------------------------------------------------------------
+   A box's text stays a plain string. Emphasis rides along inside
+   it as Markdown:
+
+       **bold**   *italic*   <u>underline</u>
+
+   That keeps the saved .json readable by eye, lets the Markdown
+   export ship the text untouched, and survives a round trip
+   through the outline importer. Emoji need no markup at all -
+   they are just characters.
+   ============================================================ */
+var MK_U  = /<u>([\s\S]*?)<\/u>/;
+var MK_B  = /\*\*(\S(?:[\s\S]*?\S)?)\*\*/;      /* no space beside the stars, so "3 * 4 * 5" stays arithmetic */
+var MK_I  = /\*(\S(?:[\s\S]*?\S)?)\*/;
+
+function mkNextMarker(s){
+  var best = null;
+  [[MK_U, "u", 7], [MK_B, "b", 4], [MK_I, "i", 2]].forEach(function(spec){
+    var m = spec[0].exec(s);
+    if(!m) return;
+    if(!best || m.index < best.index || (m.index === best.index && spec[2] > best.pad)){
+      best = { index:m.index, end:m.index + m[0].length, inner:m[1], kind:spec[1], pad:spec[2] };
+    }
+  });
+  return best;
+}
+
+/* markup string -> [{text, b, i, u}] */
+function mkParse(s){
+  var runs = [];
+  function push(t, b, i, u){
+    if(!t) return;
+    var last = runs[runs.length - 1];
+    if(last && last.b === b && last.i === i && last.u === u) last.text += t;
+    else runs.push({ text:t, b:b, i:i, u:u });
+  }
+  (function walk(str, b, i, u){
+    var at = 0;
+    while(at < str.length){
+      var rest = str.slice(at);
+      var m = mkNextMarker(rest);
+      if(!m){ push(rest, b, i, u); return; }
+      if(m.index > 0) push(rest.slice(0, m.index), b, i, u);
+      walk(m.inner, b || m.kind === "b", i || m.kind === "i", u || m.kind === "u");
+      at += m.end;
+    }
+  })(String(s == null ? "" : s), false, false, false);
+  return runs;
+}
+
+/* the words on their own, for searching, titles and file names */
+function mkPlain(s){
+  var out = "";
+  mkParse(s).forEach(function(r){ out += r.text; });
+  return out;
+}
+
+/* build the styled text into an element - never innerHTML, so a board
+   file can never smuggle markup into the page */
+function mkRender(el, s){
+  el.textContent = "";
+  mkParse(s).forEach(function(r){
+    var node = document.createTextNode(r.text);
+    if(r.u){ var u = document.createElement("u"); u.appendChild(node); node = u; }
+    if(r.i){ var i = document.createElement("i"); i.appendChild(node); node = i; }
+    if(r.b){ var b = document.createElement("b"); b.appendChild(node); node = b; }
+    el.appendChild(node);
+  });
+}
+
+/* what the browser left in the editable box -> runs */
+function mkDomRuns(root){
+  var runs = [];
+  function push(t, b, i, u){
+    if(!t) return;
+    var last = runs[runs.length - 1];
+    if(last && last.b === b && last.i === i && last.u === u) last.text += t;
+    else runs.push({ text:t, b:b, i:i, u:u });
+  }
+  (function walk(node, b, i, u){
+    for(var k = 0; k < node.childNodes.length; k++){
+      var c = node.childNodes[k];
+      if(c.nodeType === 3){ push(c.nodeValue, b, i, u); continue; }
+      if(c.nodeType !== 1) continue;
+      var tag = c.tagName.toLowerCase();
+      if(tag === "br"){ push("\n", false, false, false); continue; }
+      if(tag === "div" || tag === "p"){
+        if(runs.length) push("\n", false, false, false);
+        walk(c, b, i, u);
+        continue;
+      }
+      var st = c.style || {};
+      var w = (st.fontWeight || "") + "";
+      walk(c,
+        b || tag === "b" || tag === "strong" || w === "bold" || (parseInt(w, 10) >= 600),
+        i || tag === "i" || tag === "em" || st.fontStyle === "italic",
+        u || tag === "u" || ((st.textDecoration || "") + (st.textDecorationLine || "")).indexOf("underline") > -1);
+    }
+  })(root, false, false, false);
+  return runs;
+}
+
+/* runs -> markup */
+function mkEmit(runs){
+  var out = "";
+  runs.forEach(function(r){
+    var t = r.text.replace(new RegExp(String.fromCharCode(160), "g"), " ");
+    if(!t) return;
+    if(!r.b && !r.i && !r.u){ out += t; return; }
+    /* keep whitespace outside the markers, or it will not parse back */
+    var lead = /^\s*/.exec(t)[0];
+    var core = t.slice(lead.length);
+    var trail = /\s*$/.exec(core)[0];
+    core = core.slice(0, core.length - trail.length);
+    if(!core){ out += t; return; }
+    if(r.u) core = "<u>" + core + "</u>";
+    if(r.i) core = "*" + core + "*";
+    if(r.b) core = "**" + core + "**";
+    out += lead + core + trail;
+  });
+  return out.replace(/\n+$/, "");
+}
+
+function mkFromDom(root){ return mkEmit(mkDomRuns(root)); }
+
+/* ---- selection, in plain-character offsets ----
+   Browsers toggle emphasis with execCommand, but execCommand decides
+   "is this already bold?" from the computed weight - and these boxes are
+   500, 600 or 700 by design, never 400. It concludes the text is already
+   bold and writes font-weight:normal instead. So emphasis is applied to
+   our own model here and the box re-rendered from it. */
+function mkSelOffsets(el){
+  var sel = window.getSelection();
+  if(!sel || !sel.rangeCount) return null;
+  var r = sel.getRangeAt(0);
+  if(!el.contains(r.startContainer) || !el.contains(r.endContainer)) return null;
+  function at(container, off){
+    var pre = document.createRange();
+    pre.selectNodeContents(el);
+    try{ pre.setEnd(container, off); }catch(err){ return 0; }
+    return pre.toString().length;
+  }
+  var a = at(r.startContainer, r.startOffset);
+  var b = at(r.endContainer, r.endOffset);
+  return { start: Math.min(a,b), end: Math.max(a,b) };
+}
+function mkSetSel(el, start, end){
+  var pos = 0, sNode = null, sOff = 0, eNode = null, eOff = 0;
+  (function walk(n){
+    for(var i = 0; i < n.childNodes.length; i++){
+      var c = n.childNodes[i];
+      if(c.nodeType === 3){
+        var len = c.nodeValue.length;
+        if(sNode === null && start <= pos + len){ sNode = c; sOff = start - pos; }
+        if(eNode === null && end <= pos + len){ eNode = c; eOff = end - pos; }
+        pos += len;
+      }else if(c.nodeType === 1) walk(c);
+    }
+  })(el);
+  try{
+    var range = document.createRange();
+    if(sNode === null){ range.selectNodeContents(el); range.collapse(false); }
+    else{ range.setStart(sNode, sOff); range.setEnd(eNode || sNode, eNode ? eOff : sOff); }
+    var sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(range);
+  }catch(err){}
+}
+/* returns the runs as one flag record per character */
+function mkChars(runs){
+  var chars = [];
+  runs.forEach(function(r){
+    for(var i = 0; i < r.text.length; i++) chars.push({ c:r.text.charAt(i), b:r.b, i:r.i, u:r.u });
+  });
+  return chars;
+}
+function mkRunsFromChars(chars){
+  var runs = [];
+  chars.forEach(function(ch){
+    var last = runs[runs.length - 1];
+    if(last && last.b === ch.b && last.i === ch.i && last.u === ch.u) last.text += ch.c;
+    else runs.push({ text:ch.c, b:ch.b, i:ch.i, u:ch.u });
+  });
+  return runs;
+}
 
 var toastEl = $("#toast"), toastTimer = null;
 function toast(msg){
@@ -1112,7 +1331,7 @@ function measureText(text, depth, icon){
   }else if(measureIcon.parentNode === measureEl){
     measureEl.removeChild(measureIcon);
   }
-  measureLab.textContent = text.length ? text : " ";
+  if(text.length) mkRender(measureLab, text); else measureLab.textContent = " ";
   var r = measureEl.getBoundingClientRect();
   v = { w: Math.ceil(r.width), h: Math.ceil(r.height) };
   mcache.set(key, v);
@@ -1478,7 +1697,7 @@ function makeNodeEl(n, depth){
   }
   var lab = document.createElement("div");
   lab.className = "node-label";
-  lab.textContent = n.text;
+  mkRender(lab, n.text);
   el.appendChild(lab);
   if(n.link){
     var lk = document.createElement("a");
@@ -1604,10 +1823,9 @@ function startEdit(id){
   e.el.classList.add("editing");
   editSnapshot = e.node.text ? JSON.stringify(board.trees, clean) : null;
   editingLabel = e.el.querySelector(".node-label");
-  try{ editingLabel.contentEditable = "plaintext-only"; }catch(err){ editingLabel.contentEditable = "true"; }
-  if(editingLabel.contentEditable !== "plaintext-only" && editingLabel.contentEditable !== "true"){
-    editingLabel.contentEditable = "true";
-  }
+  /* fully editable, not plaintext-only, so bold / italic / underline work.
+     Pasted formatting is still stripped in onEditPaste. */
+  editingLabel.contentEditable = "true";
   editingLabel.focus();
   var r = document.createRange();
   r.selectNodeContents(editingLabel);
@@ -1616,8 +1834,9 @@ function startEdit(id){
   editingLabel.addEventListener("input", onEditInput);
   editingLabel.addEventListener("blur", onEditBlur);
   editingLabel.addEventListener("paste", onEditPaste);
+  showFormatBar(e);
 }
-function onEditInput(){ applyPositions(); }
+function onEditInput(){ applyPositions(); if(editingEl) positionFormatBar(editingEl); }
 function onEditPaste(ev){
   ev.preventDefault();
   var txt = (ev.clipboardData || window.clipboardData).getData("text");
@@ -1640,13 +1859,12 @@ function commitEdit(keepEmpty){
     lab.removeEventListener("blur", onEditBlur);
     lab.removeEventListener("paste", onEditPaste);
     lab.contentEditable = "false";
-    var NBSP = new RegExp(String.fromCharCode(160), "g");
-    var TRAIL = new RegExp(String.fromCharCode(10) + "+$");
-    var txt = lab.innerText.replace(NBSP, " ").replace(TRAIL, "");
+    hideFormatBar();
+    var txt = mkFromDom(lab);
 
     /* A box that was just created and never named is litter - drop it,
        and drop the undo step that created it, so nothing happened at all. */
-    if(!keepEmpty && e && id === freshId && !txt.trim() && !e.node.children.length){
+    if(!keepEmpty && e && id === freshId && !mkPlain(txt).trim() && !e.node.children.length){
       freshId = null; editSnapshot = null;
       if(e.parent){
         e.parent.children.splice(e.parent.children.indexOf(e.node), 1);
@@ -1659,7 +1877,7 @@ function commitEdit(keepEmpty){
       render(); touch();
       return;
     }
-    if(txt.trim()) freshId = null;
+    if(mkPlain(txt).trim()) freshId = null;
 
     if(e && e.node.text !== txt){
       /* a rename is one undo step; filling in a freshly created node is not,
@@ -1674,7 +1892,7 @@ function commitEdit(keepEmpty){
       touch();
     }
     editSnapshot = null;
-    if(e) lab.textContent = e.node.text;
+    if(e) mkRender(lab, e.node.text);
   }
   applyPositions();
   syncInspector();
@@ -1941,7 +2159,7 @@ function syncInspector(){
     : (e.depth === 0 ? "Tree root" : "Level " + e.depth);
   $("#insp-title").textContent = many
     ? "Colour, delete or duplicate them together"
-    : (e.node.text || "Untitled");
+    : (mkPlain(e.node.text) || "Untitled");
   /* things that only make sense for one node at a time */
   ["#dir-field", "#i-detach", "#i-child", "#i-icon", "#i-link"].forEach(function(s){
     var el = $(s); if(!el) return;
@@ -2244,6 +2462,7 @@ document.addEventListener("keydown", function(ev){
     if($("#importer").classList.contains("on")){ closeImporter(); return; }
     if($("#sheet").classList.contains("on")){ $("#sheet").classList.remove("on"); return; }
     if(searchOpen()){ closeSearch(); return; }
+    if(pickMode === "text"){ closeEmojiPicker(); return; }
     if(editingId){ commitEdit(); canvas.focus(); return; }
     closeMenu();
     if(sel){ selectOnly(null); render(); }
@@ -2261,6 +2480,13 @@ document.addEventListener("keydown", function(ev){
 
   /* ---- while typing into a box ---- */
   if(editingId){
+    if(meta && !ev.altKey){
+      var fk = ev.key.toLowerCase();
+      if(fk === "b"){ ev.preventDefault(); applyFormat("b"); return; }
+      if(fk === "i"){ ev.preventDefault(); applyFormat("i"); return; }
+      if(fk === "u" && !ev.shiftKey){ ev.preventDefault(); applyFormat("u"); return; }
+      if(fk === "e"){ ev.preventDefault(); openEmojiPicker(); return; }
+    }
     if(ev.key === "Enter" && meta){          /* sibling above */
       ev.preventDefault();
       var above = editingId; commitEdit(true); selectOnly(above); addSiblingAbove(); return;
@@ -2456,36 +2682,57 @@ function wrapLines(ctx, text, maxW){
    plain text node to walk. */
 function domLines(nodeEl){
   var lab = nodeEl.querySelector(".node-label");
-  var tn = lab && lab.firstChild;
-  if(!tn || tn.nodeType !== 3 || !tn.nodeValue.length) return null;
-  var s = tn.nodeValue;
+  if(!lab) return null;
   var box = nodeEl.getBoundingClientRect();
   var z = view.z || 1;
   var range = document.createRange();
-  var out = [], start = 0, curTop = null;
+  var out = [];
 
-  function flush(end){
-    var a = start, b = end;
-    while(a < b && /\s/.test(s.charAt(a))) a++;
-    while(b > a && /\s/.test(s.charAt(b-1))) b--;
-    if(b <= a) return;
-    range.setStart(tn, a); range.setEnd(tn, b);
-    var rs = range.getClientRects();
-    if(!rs.length) return;
-    var r = rs[0];
-    out.push({ t: s.slice(a, b),
-               dx: (r.left - box.left)/z,
-               dy: (r.top + r.height/2 - box.top)/z });
-  }
-  for(var i=0;i<s.length;i++){
-    range.setStart(tn, i); range.setEnd(tn, i+1);
-    var rects = range.getClientRects();
-    if(!rects.length) continue;
-    var top = Math.round(rects[0].top * 100) / 100;
-    if(curTop === null){ curTop = top; }
-    else if(Math.abs(top - curTop) > 0.5){ flush(i); start = i; curTop = top; }
-  }
-  flush(s.length);
+  /* every text node in the label, each carrying the emphasis it sits under */
+  var texts = [];
+  (function collect(el, b, i, u){
+    for(var k = 0; k < el.childNodes.length; k++){
+      var c = el.childNodes[k];
+      if(c.nodeType === 3){ if(c.nodeValue.length) texts.push({ tn:c, b:b, i:i, u:u }); continue; }
+      if(c.nodeType !== 1) continue;
+      var tag = c.tagName.toLowerCase();
+      collect(c,
+        b || tag === "b" || tag === "strong",
+        i || tag === "i" || tag === "em",
+        u || tag === "u");
+    }
+  })(lab, false, false, false);
+  if(!texts.length) return null;
+
+  /* split each one wherever the browser wrapped it */
+  texts.forEach(function(t){
+    var s = t.tn.nodeValue, start = 0, curTop = null;
+    function flush(end){
+      var a = start, bEnd = end;
+      while(a < bEnd && /\s/.test(s.charAt(a))) a++;
+      while(bEnd > a && /\s/.test(s.charAt(bEnd - 1))) bEnd--;
+      if(bEnd <= a) return;
+      range.setStart(t.tn, a); range.setEnd(t.tn, bEnd);
+      var rs = range.getClientRects();
+      if(!rs.length) return;
+      var r = rs[0];
+      out.push({ t: s.slice(a, bEnd),
+                 dx: (r.left - box.left)/z,
+                 dy: (r.top + r.height/2 - box.top)/z,
+                 w: r.width/z,
+                 bottom: (r.bottom - box.top)/z,
+                 b: t.b, i: t.i, u: t.u });
+    }
+    for(var c = 0; c < s.length; c++){
+      range.setStart(t.tn, c); range.setEnd(t.tn, c + 1);
+      var rects = range.getClientRects();
+      if(!rects.length) continue;
+      var top = Math.round(rects[0].top * 100) / 100;
+      if(curTop === null){ curTop = top; }
+      else if(Math.abs(top - curTop) > 0.5){ flush(c); start = c; curTop = top; }
+    }
+    flush(s.length);
+  });
   return out;
 }
 
@@ -2600,7 +2847,24 @@ function renderPNG(){
       var e = index.get(n.id);
       var lines = e ? domLines(e.el) : null;
       if(lines && lines.length){
-        lines.forEach(function(L){ ctx.fillText(L.t, x + L.dx, y + L.dy); });
+        var baseWeight = sp.font.split(" ")[0];
+        lines.forEach(function(L){
+          var weight = L.b ? (parseInt(baseWeight, 10) >= 700 ? "800" : "700") : baseWeight;
+          ctx.font = (L.i ? "italic " : "") + weight + " " + fontPx + "px " +
+                     "'Public Sans', system-ui, sans-serif";
+          ctx.fillText(L.t, x + L.dx, y + L.dy);
+          if(L.u){
+            ctx.save();
+            ctx.strokeStyle = textCol;
+            ctx.lineWidth = 1.5;
+            ctx.lineCap = "butt";
+            ctx.beginPath();
+            ctx.moveTo(x + L.dx, y + L.dy + fontPx * 0.42);
+            ctx.lineTo(x + L.dx + L.w, y + L.dy + fontPx * 0.42);
+            ctx.stroke();
+            ctx.restore();
+          }
+        });
       }else{
         var lineH = fontPx * sp.lh;
         var startY = y + sp.padY + lineH/2;
@@ -2910,7 +3174,7 @@ function runSearch(){
   if(q){
     board.trees.forEach(function(tree){
       walkAll(tree.root, function(n){
-        var hay = (n.text || "") + " " + (n.note || "");
+        var hay = mkPlain(n.text) + " " + (n.note || "");
         if(hay.toLowerCase().indexOf(q) > -1) hits.push({ id:n.id, tree:tree, node:n });
       });
     });
@@ -2964,12 +3228,130 @@ function centreOn(e){
 }
 
 /* ============================================================
+   The style bar over a box being typed into
+   ============================================================ */
+function showFormatBar(e){
+  var bar = $("#formatbar");
+  bar.classList.add("on");
+  positionFormatBar(e.el);
+  syncFormatBar();
+}
+function positionFormatBar(nodeEl){
+  var bar = $("#formatbar");
+  var cr = canvas.getBoundingClientRect();
+  var r = nodeEl.getBoundingClientRect();
+  var w = bar.offsetWidth || 190, h = bar.offsetHeight || 38;
+  var left = clamp(r.left + r.width/2 - w/2 - cr.left, 8, cr.width - w - 8);
+  var top = r.top - cr.top - h - 10;
+  if(top < 8) top = r.bottom - cr.top + 10;       /* flip below when there is no room above */
+  bar.style.left = left + "px";
+  bar.style.top = top + "px";
+}
+function hideFormatBar(){
+  $("#formatbar").classList.remove("on");
+  closeEmojiPicker();
+}
+/* light up whichever styles the selection is wholly inside */
+function syncFormatBar(){
+  if(!editingId || !editingLabel) return;
+  var span = formatSpan();
+  ["b","i","u"].forEach(function(k, n){
+    $("#" + ["fmt-bold","fmt-italic","fmt-underline"][n]).classList.toggle("on", !!(span && span[k]));
+  });
+}
+/* which flags are on across the whole selection (or the caret's character) */
+function formatSpan(){
+  var chars = mkChars(mkDomRuns(editingLabel));
+  var off = mkSelOffsets(editingLabel);
+  if(!chars.length || !off) return null;
+  var a = off.start, z = off.end;
+  if(a === z){ a = Math.max(0, a - 1); z = a + 1; }        /* caret: look at the character behind it */
+  var res = { b:true, i:true, u:true };
+  var seen = false;
+  for(var k = a; k < z && k < chars.length; k++){
+    seen = true;
+    if(!chars[k].b) res.b = false;
+    if(!chars[k].i) res.i = false;
+    if(!chars[k].u) res.u = false;
+  }
+  return seen ? res : null;
+}
+/* kind is "b", "i" or "u" */
+function applyFormat(kind){
+  if(!editingId || !editingLabel) return;
+  var lab = editingLabel;
+  var off = mkSelOffsets(lab);
+  var chars = mkChars(mkDomRuns(lab));
+  if(!chars.length) return;
+  var a = off ? off.start : 0, z = off ? off.end : chars.length;
+  if(a === z){ a = 0; z = chars.length; }                  /* nothing picked out: style the whole box */
+  z = Math.min(z, chars.length);
+  var allOn = true;
+  for(var k = a; k < z; k++) if(!chars[k][kind]){ allOn = false; break; }
+  for(var k2 = a; k2 < z; k2++) chars[k2][kind] = !allOn;
+
+  mkRender(lab, mkEmit(mkRunsFromChars(chars)));
+  lab.focus();
+  mkSetSel(lab, a, z);
+  syncFormatBar();
+  applyPositions();          /* bold is wider - relayout as it changes */
+  positionFormatBar(editingEl);
+}
+function clearFormat(){
+  if(!editingId || !editingLabel) return;
+  var lab = editingLabel;
+  var off = mkSelOffsets(lab);
+  var chars = mkChars(mkDomRuns(lab));
+  if(!chars.length) return;
+  var a = off ? off.start : 0, z = off ? off.end : chars.length;
+  if(a === z){ a = 0; z = chars.length; }
+  for(var k = a; k < Math.min(z, chars.length); k++){ chars[k].b = chars[k].i = chars[k].u = false; }
+  mkRender(lab, mkEmit(mkRunsFromChars(chars)));
+  lab.focus();
+  mkSetSel(lab, a, z);
+  syncFormatBar();
+  applyPositions();
+  positionFormatBar(editingEl);
+}
+function insertAtCaret(text){
+  if(!editingId || !editingLabel) return;
+  editingLabel.focus();
+  try{ document.execCommand("insertText", false, text); }
+  catch(err){
+    var sel = window.getSelection();
+    if(sel && sel.rangeCount){
+      var r = sel.getRangeAt(0);
+      r.deleteContents();
+      r.insertNode(document.createTextNode(text));
+      r.collapse(false);
+    }
+  }
+  applyPositions();
+  positionFormatBar(editingEl);
+}
+
+["fmt-bold","fmt-italic","fmt-underline"].forEach(function(id, k){
+  var cmd = ["b","i","u"][k];
+  $("#" + id).addEventListener("mousedown", function(ev){ ev.preventDefault(); });
+  $("#" + id).addEventListener("click", function(){ applyFormat(cmd); });
+});
+$("#fmt-clear").addEventListener("mousedown", function(ev){ ev.preventDefault(); });
+$("#fmt-clear").addEventListener("click", clearFormat);
+$("#fmt-emoji").addEventListener("mousedown", function(ev){ ev.preventDefault(); });
+$("#fmt-emoji").addEventListener("click", function(){ openEmojiPicker(); });
+document.addEventListener("selectionchange", function(){ if(editingId) syncFormatBar(); });
+
+/* ============================================================
    Icons and links on a node
    ============================================================ */
 var ICONS = ("⭐️ ✅ ❌ ⚠️ 🔥 💡 ❓ ❗️ 📌 🎯 🚀 🧠 💬 📝 📅 ⏰ " +
              "🔒 🔑 💰 📈 📉 🧩 🔧 🛠 🐛 🧪 📦 🚚 🏁 🏆 👍 👎 " +
              "👤 👥 🏢 🌍 ☁️ 🔗 📎 📁 📄 🖼 🎨 🎵 ☕️ 🍀 ❤️ 💔 " +
              "🟢 🟡 🔴 🔵 🟣 ⚫️ ⚪️ 🔺 🔻 ➕ ➖ ✏️ 🗑 ♻️ 🔁 ➡️").split(/\s+/).filter(Boolean);
+
+/* One grid, two jobs: pin an icon to the box, or drop an emoji into the
+   words you are typing. `pickMode` says which. */
+var pickMode = "icon";
 
 function buildIconGrid(){
   var g = $("#ip-grid");
@@ -2979,9 +3361,35 @@ function buildIconGrid(){
     b.type = "button";
     b.textContent = ic;
     b.title = ic;
-    b.addEventListener("click", function(){ setIcon(ic); });
+    b.addEventListener("mousedown", function(ev){ ev.preventDefault(); });
+    b.addEventListener("click", function(){
+      if(pickMode === "text"){ insertAtCaret(ic); closeEmojiPicker(); }
+      else setIcon(ic);
+    });
     g.appendChild(b);
   });
+}
+function openEmojiPicker(){
+  if(!editingId || !editingEl) return;
+  pickMode = "text";
+  buildIconGrid();
+  $("#ip-clear").style.display = "none";
+  placePicker(editingEl);
+}
+function closeEmojiPicker(){
+  if(pickMode !== "text") return;
+  $("#iconpick").classList.remove("on");
+  pickMode = "icon";
+  $("#ip-clear").style.display = "";
+}
+function placePicker(anchorEl){
+  var pick = $("#iconpick");
+  pick.classList.add("on");
+  var r = anchorEl.getBoundingClientRect();
+  var cr = canvas.getBoundingClientRect();
+  var w = pick.offsetWidth, h = pick.offsetHeight;
+  pick.style.left = clamp(r.left - cr.left, 8, cr.width - w - 8) + "px";
+  pick.style.top = clamp(r.bottom - cr.top + 8, 8, cr.height - h - 8) + "px";
 }
 function setIcon(ic){
   var entries = selectedEntries();
@@ -2994,14 +3402,10 @@ function setIcon(ic){
 function openIconPicker(){
   var e = index.get(sel);
   if(!e) return;
+  pickMode = "icon";
+  $("#ip-clear").style.display = "";
   buildIconGrid();
-  var pick = $("#iconpick");
-  pick.classList.add("on");
-  var r = e.el.getBoundingClientRect();
-  var cr = canvas.getBoundingClientRect();
-  var w = pick.offsetWidth, h = pick.offsetHeight;
-  pick.style.left = clamp(r.left - cr.left, 8, cr.width - w - 8) + "px";
-  pick.style.top = clamp(r.bottom - cr.top + 8, 8, cr.height - h - 8) + "px";
+  placePicker(e.el);
 }
 function closeIconPicker(){ $("#iconpick").classList.remove("on"); }
 
@@ -3009,7 +3413,7 @@ function promptLink(){
   var e = index.get(sel);
   if(!e) return;
   var current = e.node.link || "";
-  var url = window.prompt("Link for “" + (e.node.text || "this node") + "”\n\nLeave empty to remove it.", current);
+  var url = window.prompt("Link for “" + (mkPlain(e.node.text) || "this node") + "”\n\nLeave empty to remove it.", current);
   if(url === null) return;
   url = url.trim();
   if(url && !/^https?:\/\//i.test(url)) url = "https://" + url;
@@ -3533,7 +3937,7 @@ $("#imp-create").addEventListener("click", function(){
   if(!parsed) return;
   var b = {
     id: uid(),
-    name: parsed.name || parsed.trees[0].root.text ||
+    name: parsed.name || mkPlain(parsed.trees[0].root.text) ||
           (picked ? picked.name.replace(/\.[a-z0-9]+$/i, "") : "") || "Imported board",
     createdAt: Date.now(), updatedAt: Date.now(),
     view: null,
