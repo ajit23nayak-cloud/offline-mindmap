@@ -557,6 +557,31 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 .node.hit-now{box-shadow:0 0 0 2px var(--paper), 0 0 0 5px var(--pal-amber), var(--node-shadow)}
 
 /* ---------- where a dragged branch will land ---------- */
+/* ---------- the note that floats up when you hover a box ---------- */
+#notepop{
+  position:absolute;z-index:45;display:none;
+  max-width:300px;max-height:240px;overflow:auto;
+  padding:10px 12px;border-radius:11px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  box-shadow:var(--shadow-3);
+  font-size:13px;line-height:1.55;color:var(--ink-2);
+  white-space:pre-wrap;overflow-wrap:break-word;
+  opacity:0;transform:translateY(3px);
+  transition:opacity .13s ease, transform .13s ease;
+}
+#notepop.on{display:block;opacity:1;transform:none}
+#notepop .np-head{
+  display:flex;align-items:center;gap:6px;margin-bottom:5px;
+  font-family:var(--font-mono);font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-3);
+}
+#notepop .np-head i{
+  width:5px;height:5px;border-radius:50%;flex:none;
+  background:color-mix(in srgb, var(--c, var(--accent)) 80%, var(--ink));
+}
+#notepop .np-body{color:var(--ink)}
+
 #dropline{
   position:absolute;z-index:25;display:none;pointer-events:none;
   height:3px;border-radius:2px;background:var(--pal-amber);
@@ -837,6 +862,8 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 
   <div id="dropline" aria-hidden="true"></div>
 
+  <div id="notepop" role="tooltip"></div>
+
   <div class="bar" id="formatbar" role="toolbar" aria-label="Text style">
     <button class="fmt" id="fmt-bold" title="Bold (Ctrl+B)"><b>B</b></button>
     <button class="fmt" id="fmt-italic" title="Italic (Ctrl+I)"><i>I</i></button>
@@ -957,6 +984,7 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
           <li><span>Select several</span> <span class="kbd">Shift + Click</span></li>
           <li><span>Select all</span> <span class="kbd">Ctrl + A</span></li>
           <li><span>Find in board</span> <span class="kbd">Ctrl + F</span></li>
+          <li><span>Read a box&rsquo;s note</span> <span class="kbd">hover it</span></li>
           <li><span>Pan the canvas</span> <span class="kbd">Space + drag</span></li>
         </ul>
         <h4 style="margin-top:18px">View &amp; style</h4>
@@ -1928,6 +1956,7 @@ function openBoard(id){
 }
 
 function render(){
+  hideNote();
   world.innerHTML = "";
   index.clear();
   board.trees.forEach(function(tree){
@@ -2085,6 +2114,7 @@ function fitToScreen(animate){
 function startEdit(id){
   var e = index.get(id);
   if(!e) return;
+  hideNote();
   commitEdit();
   editingId = id; editingEl = e.el;
   e.el.classList.add("editing");
@@ -2457,7 +2487,82 @@ var spaceDown = false;
 var panning = null;
 var draggingEl = null, dragState = null;
 
+/* ============================================================
+   Hovering a box floats its note up
+   ------------------------------------------------------------
+   A note is written to keep detail off the canvas, so it should
+   be readable without selecting anything. It waits a moment so
+   it does not flash while the pointer crosses the board, and it
+   gets out of the way the instant anything else starts.
+   ============================================================ */
+var notePop = $("#notepop");
+var noteTimer = null, noteFor = null;
+
+function hideNote(){
+  clearTimeout(noteTimer);
+  noteTimer = null;
+  noteFor = null;
+  if(notePop) notePop.classList.remove("on");
+}
+function showNoteFor(id){
+  var e = index.get(id);
+  if(!e || !e.node.note || !e.node.note.trim()) return;
+  noteFor = id;
+  notePop.innerHTML = "";
+  notePop.style.setProperty("--c", "var(" + effProp(id) + ")");
+
+  var head = document.createElement("div");
+  head.className = "np-head";
+  var dot = document.createElement("i");
+  var label = document.createElement("span");
+  label.textContent = "Note";
+  head.appendChild(dot); head.appendChild(label);
+
+  var body = document.createElement("div");
+  body.className = "np-body";
+  body.textContent = e.node.note;
+
+  notePop.appendChild(head);
+  notePop.appendChild(body);
+  notePop.classList.add("on");
+  placeNote(e.el);
+}
+function placeNote(nodeEl){
+  var cr = canvas.getBoundingClientRect();
+  var r = nodeEl.getBoundingClientRect();
+  var w = notePop.offsetWidth, h = notePop.offsetHeight;
+  var left = clamp(r.left + r.width/2 - w/2 - cr.left, 10, Math.max(10, cr.width - w - 10));
+  var top = r.bottom - cr.top + 10;
+  if(top + h > cr.height - 10) top = r.top - cr.top - h - 10;   /* flip above when there is no room */
+  if(top < 10) top = 10;
+  notePop.style.left = left + "px";
+  notePop.style.top = top + "px";
+}
+
+canvas.addEventListener("mouseover", function(ev){
+  if(editingId || dragState || panning) return;
+  var nodeEl = ev.target.closest ? ev.target.closest(".node") : null;
+  if(!nodeEl){
+    /* staying on the popup itself keeps it up, so a long note can be read */
+    if(!(ev.target.closest && ev.target.closest("#notepop"))) hideNote();
+    return;
+  }
+  var id = nodeEl.dataset.id;
+  if(id === noteFor) return;
+  var e = index.get(id);
+  clearTimeout(noteTimer);
+  if(!e || !e.node.note || !e.node.note.trim()){ hideNote(); return; }
+  noteTimer = setTimeout(function(){ showNoteFor(id); }, 320);
+});
+canvas.addEventListener("mouseleave", function(ev){
+  if(ev.relatedTarget && notePop.contains(ev.relatedTarget)) return;   /* moving onto the note itself */
+  hideNote();
+});
+notePop.addEventListener("mouseleave", hideNote);
+document.addEventListener("pointerdown", hideNote, true);
+
 canvas.addEventListener("pointerdown", function(ev){
+  hideNote();
   if(ev.button === 2) return;
   var toggleBtn = ev.target.closest ? ev.target.closest("[data-toggle]") : null;
   if(toggleBtn){ ev.preventDefault(); toggleCollapse(toggleBtn.dataset.toggle); return; }
@@ -2694,6 +2799,7 @@ function nodeUnder(ev){
 
 canvas.addEventListener("wheel", function(ev){
   ev.preventDefault();
+  hideNote();
   if(ev.ctrlKey || ev.metaKey){
     zoomAt(Math.pow(0.995, ev.deltaY), ev.clientX, ev.clientY);
   }else{

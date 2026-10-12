@@ -54,7 +54,9 @@ On macOS and Linux there is no `.bat`; run `node server.js` in the folder.
   Drop it well clear of everything and it becomes a tree of its own.
 - Eight branch colours, inherited down each branch
 - Bold, italic and underline inside the words, and emoji anywhere in the text
-- An emoji and a link pinned to any box, plus a longer note that stays off the canvas
+- An emoji and a link pinned to any box, plus a longer note that stays off the
+  canvas. A box with a note carries a small dot; hover it and the note floats up,
+  so you can read the detail without selecting anything
 
 **Getting things in**
 
