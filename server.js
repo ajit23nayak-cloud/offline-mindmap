@@ -18,7 +18,8 @@ const { exec } = require("child_process");
 const ROOT = __dirname;
 const APP = path.join(ROOT, "Branchboard.html");
 const BOARDS = path.join(ROOT, "boards");
-const DELETED = path.join(BOARDS, "_deleted");
+const DELETED_NAME = "_deleted";
+const DELETED = path.join(BOARDS, DELETED_NAME);
 const KEYFILE = path.join(ROOT, "apikey.txt");
 const PORT_FROM = 8777;
 const PORT_TO = 8799;
@@ -126,25 +127,77 @@ function safeName(s) {
     .replace(/\s+/g, "-")
     .slice(0, 50) || "board";
 }
-function boardFiles() {
-  try {
-    return fs.readdirSync(BOARDS).filter(f => f.toLowerCase().endsWith(".json"));
-  } catch (e) {
-    return [];
+/* A board's folder is a real folder under boards/, so the shelves you make
+   in the app are the same ones you see in Explorer - and a folder you make
+   in Explorer shows up in the app. Paths are relative and sanitised, so a
+   board file can never write outside boards/. */
+/* Folder names keep their spaces and capitals - they are shelf labels, not
+   file names - but lose anything that could steer the path somewhere else. */
+function safeSegment(s) {
+  return String(s || "")
+    .replace(/[\\/:*?"<>|]/g, "")
+    .replace(/[\x00-\x1f]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/^[.\s]+|[.\s]+$/g, "")
+    .slice(0, 50);
+}
+function safeFolder(p) {
+  return String(p || "")
+    .replace(/\\/g, "/")
+    .split("/")
+    .map(safeSegment)
+    .filter(seg => seg && seg !== DELETED_NAME)
+    .slice(0, 6)                       /* a sane nesting limit */
+    .join("/");
+}
+
+/* every .json under boards/, with the folder it sits in */
+function boardFiles(rel) {
+  rel = rel || "";
+  const abs = path.join(BOARDS, rel);
+  let entries = [];
+  try { entries = fs.readdirSync(abs, { withFileTypes: true }); } catch (e) { return []; }
+  let out = [];
+  for (const d of entries) {
+    if (d.name === DELETED_NAME || d.name.startsWith(".")) continue;
+    const childRel = rel ? rel + "/" + d.name : d.name;
+    if (d.isDirectory()) out = out.concat(boardFiles(childRel));
+    else if (d.name.toLowerCase().endsWith(".json")) {
+      out.push({ rel: childRel, folder: rel, name: d.name });
+    }
   }
+  return out;
+}
+/* every folder under boards/, even the empty ones */
+function folderList(rel) {
+  rel = rel || "";
+  const abs = path.join(BOARDS, rel);
+  let entries = [];
+  try { entries = fs.readdirSync(abs, { withFileTypes: true }); } catch (e) { return []; }
+  let out = [];
+  for (const d of entries) {
+    if (!d.isDirectory() || d.name === DELETED_NAME || d.name.startsWith(".")) continue;
+    const childRel = rel ? rel + "/" + d.name : d.name;
+    out.push(childRel);
+    out = out.concat(folderList(childRel));
+  }
+  return out;
 }
 function fileForId(id) {
   const suffix = "__" + id + ".json";
-  return boardFiles().find(f => f.endsWith(suffix)) || null;
+  return boardFiles().find(f => f.name.endsWith(suffix)) || null;
 }
 function readAllBoards() {
   const out = [];
   for (const f of boardFiles()) {
     try {
-      const b = JSON.parse(fs.readFileSync(path.join(BOARDS, f), "utf8"));
-      if (b && b.id && Array.isArray(b.trees)) out.push(b);
+      const b = JSON.parse(fs.readFileSync(path.join(BOARDS, f.rel), "utf8"));
+      if (b && b.id && Array.isArray(b.trees)) {
+        b.folder = f.folder;           /* the folder on disk wins, always */
+        out.push(b);
+      }
     } catch (e) {
-      console.log("  skipped unreadable file: " + f);
+      console.log("  skipped unreadable file: " + f.rel);
     }
   }
   out.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
@@ -154,23 +207,56 @@ function writeBoard(id, board) {
   if (!board || board.id !== id || !Array.isArray(board.trees)) {
     throw new Error("bad board payload");
   }
-  const wanted = safeName(board.name) + "__" + id + ".json";
+  const folder = safeFolder(board.folder);
+  const wantedName = safeName(board.name) + "__" + id + ".json";
+  const wantedRel = folder ? folder + "/" + wantedName : wantedName;
+  const dirAbs = path.join(BOARDS, folder);
+  fs.mkdirSync(dirAbs, { recursive: true });
+
   const existing = fileForId(id);
-  if (existing && existing !== wanted) {
-    try { fs.renameSync(path.join(BOARDS, existing), path.join(BOARDS, wanted)); }
-    catch (e) { /* fall through and just write the new name */ }
+  if (existing && existing.rel !== wantedRel) {
+    /* renamed, or moved to another folder - carry the file across */
+    try { fs.renameSync(path.join(BOARDS, existing.rel), path.join(BOARDS, wantedRel)); }
+    catch (e) { /* fall through and just write it at the new place */ }
   }
-  const tmp = path.join(BOARDS, "." + wanted + ".tmp");
+  const tmp = path.join(dirAbs, "." + wantedName + ".tmp");
   fs.writeFileSync(tmp, JSON.stringify(board, null, 2), "utf8");
-  fs.renameSync(tmp, path.join(BOARDS, wanted));   /* atomic-ish: never a half-written board */
-  return wanted;
+  fs.renameSync(tmp, path.join(BOARDS, wantedRel));  /* atomic-ish: never a half-written board */
+  return wantedRel;
 }
 function deleteBoard(id) {
   const existing = fileForId(id);
   if (!existing) return false;
   fs.mkdirSync(DELETED, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  fs.renameSync(path.join(BOARDS, existing), path.join(DELETED, stamp + "__" + existing));
+  fs.renameSync(path.join(BOARDS, existing.rel), path.join(DELETED, stamp + "__" + existing.name));
+  return true;
+}
+
+/* ---------- folders ---------- */
+
+function makeFolder(p) {
+  const folder = safeFolder(p);
+  if (!folder) throw new Error("bad folder name");
+  fs.mkdirSync(path.join(BOARDS, folder), { recursive: true });
+  return folder;
+}
+function renameFolder(from, to) {
+  const a = safeFolder(from), b = safeFolder(to);
+  if (!a || !b) throw new Error("bad folder name");
+  if (a === b) return b;
+  if ((b + "/").indexOf(a + "/") === 0) throw new Error("cannot move a folder inside itself");
+  fs.mkdirSync(path.dirname(path.join(BOARDS, b)), { recursive: true });
+  fs.renameSync(path.join(BOARDS, a), path.join(BOARDS, b));
+  return b;
+}
+function removeFolder(p) {
+  const folder = safeFolder(p);
+  if (!folder) throw new Error("bad folder name");
+  fs.mkdirSync(DELETED, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  fs.renameSync(path.join(BOARDS, folder),
+                path.join(DELETED, stamp + "__" + folder.replace(/\//g, "-")));
   return true;
 }
 
@@ -255,6 +341,33 @@ const server = http.createServer(async (req, res) => {
   if (url === "/api/boards" && req.method === "GET") {
     try { return sendJSON(res, 200, readAllBoards()); }
     catch (e) { return sendJSON(res, 500, { error: String(e.message) }); }
+  }
+
+  if (url.split("?")[0] === "/api/folders") {
+    try {
+      if (req.method === "GET") return sendJSON(res, 200, folderList());
+      if (req.method === "POST") {
+        const made = makeFolder(JSON.parse(await readBody(req)).path);
+        console.log("  new folder  " + made);
+        return sendJSON(res, 200, { ok: true, path: made });
+      }
+      if (req.method === "PUT") {
+        const body = JSON.parse(await readBody(req));
+        const to = renameFolder(body.from, body.to);
+        console.log("  folder renamed  " + body.from + " -> " + to);
+        return sendJSON(res, 200, { ok: true, path: to });
+      }
+      if (req.method === "DELETE") {
+        const p = decodeURIComponent((url.split("?")[1] || "").replace(/^path=/, ""));
+        removeFolder(p);
+        console.log("  folder moved to _deleted: " + p);
+        return sendJSON(res, 200, { ok: true });
+      }
+      res.writeHead(405); return res.end();
+    } catch (e) {
+      console.log("  FOLDER OP FAILED: " + e.message);
+      return sendJSON(res, 400, { error: String(e.message) });
+    }
   }
 
   const m = /^\/api\/boards\/([^/?]+)$/.exec(url);

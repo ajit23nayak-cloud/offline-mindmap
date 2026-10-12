@@ -191,6 +191,37 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
   text-transform:uppercase;letter-spacing:.11em;color:var(--ink-2);margin:0;
 }
 .shelf-label .count{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.shelf-label h2{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.crumb{
+  font:inherit;color:var(--ink-3);
+  text-transform:uppercase;letter-spacing:.11em;font-weight:700;font-size:13px;
+  padding:2px 4px;border-radius:5px;
+}
+.crumb.link{cursor:pointer}
+.crumb.link:hover{color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,transparent)}
+.crumb.here{color:var(--ink)}
+.crumb-sep{color:var(--line-strong);font-size:12px}
+
+/* ---------- folder cards ---------- */
+.card.folder{min-height:0;cursor:pointer}
+.card.folder .folder-top{
+  display:flex;align-items:center;gap:11px;padding:16px 15px 14px;
+}
+.card.folder .folder-top svg{width:26px;height:26px;flex:none;color:var(--accent)}
+.card.folder .folder-name{
+  font-family:var(--font-display);font-size:16px;font-weight:700;letter-spacing:-.012em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.card.folder .folder-count{
+  font-family:var(--font-mono);font-size:11px;color:var(--ink-3);margin-top:2px;
+}
+.card.folder.drop-here{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent);
+  transform:translateY(-3px);
+}
+.card.dragging{opacity:.45}
+.card[draggable="true"]{cursor:grab}
 .store-note{
   margin-left:auto;display:flex;align-items:center;gap:7px;
   font-family:var(--font-mono);font-size:11px;color:var(--ink-3);
@@ -729,6 +760,10 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
           Import
         </button>
+        <button class="btn ghost" id="new-folder-btn" title="New folder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg>
+          New folder
+        </button>
         <button class="btn primary" id="new-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
           New board
@@ -737,7 +772,7 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
     </div>
 
     <div class="shelf-label">
-      <h2>Your boards</h2>
+      <h2 id="crumbs"></h2>
       <span class="count" id="board-count"></span>
       <span class="store-note" id="store-note"></span>
     </div>
@@ -1272,22 +1307,23 @@ function sampleBoard(){
   return {
     id: uid(),
     name: "Nimbus 2.0 — launch thinking",
+    folder: "",
     createdAt: now, updatedAt: now,
     view: null,
     trees: [t1, t2, t3]
   };
 }
 
-var db = { boards: [] };
+var db = { boards: [], folders: [] };
 function loadDB(){
   try{
     var raw = localStorage.getItem(STORE_KEY);
     if(raw){
       var p = JSON.parse(raw);
-      if(p && Array.isArray(p.boards)){ db = p; return; }
+      if(p && Array.isArray(p.boards)){ db = p; db.folders = db.folders || []; return; }
     }
   }catch(e){}
-  db = { boards:[ sampleBoard() ] };
+  db = { boards:[ sampleBoard() ], folders: [] };
   saveDB();
 }
 var saveTimer = null;
@@ -1484,17 +1520,227 @@ function showHome(){
   board = null;
   renderHome();
 }
+/* ============================================================
+   Folders
+   ------------------------------------------------------------
+   A folder is just a path string on a board, like "Work/Clients".
+   Running under the launcher these are real folders inside
+   boards/, so what you make here appears in Explorer and what you
+   make in Explorer appears here. In browser-storage mode the list
+   is kept in db.folders so an empty folder still has somewhere
+   to live.
+   ============================================================ */
+var cwd = "";                       /* the folder being looked at, "" is the top */
+var dragBoardId = null;             /* the board card currently being dragged */
+
+function allFolders(){
+  var seen = {};
+  (db.folders || []).forEach(function(p){ if(p) seen[p] = true; });
+  db.boards.forEach(function(b){ if(b.folder) seen[b.folder] = true; });
+  /* a nested folder implies its parents exist */
+  Object.keys(seen).slice().forEach(function(p){
+    var parts = p.split("/");
+    for(var i = 1; i < parts.length; i++) seen[parts.slice(0, i).join("/")] = true;
+  });
+  return Object.keys(seen).sort();
+}
+function childFolders(parent){
+  var prefix = parent ? parent + "/" : "";
+  return allFolders().filter(function(p){
+    return p.indexOf(prefix) === 0 && p.slice(prefix.length).indexOf("/") === -1 && p !== parent;
+  });
+}
+function boardsIn(folder){
+  return db.boards.filter(function(b){ return (b.folder || "") === folder; });
+}
+function countInFolder(folder){
+  var prefix = folder + "/";
+  var boards = db.boards.filter(function(b){
+    var f = b.folder || "";
+    return f === folder || f.indexOf(prefix) === 0;
+  }).length;
+  var subs = childFolders(folder).length;
+  return { boards: boards, subs: subs };
+}
+function folderLabel(p){ return p ? p.split("/").pop() : "All boards"; }
+
+function cleanFolderName(s){
+  return String(s || "").trim().replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, " ").slice(0, 50).trim();
+}
+function folderExists(p){ return allFolders().indexOf(p) > -1; }
+
+function addFolder(name){
+  var clean = cleanFolderName(name);
+  if(!clean) return null;
+  var full = cwd ? cwd + "/" + clean : clean;
+  if(folderExists(full)){ toast("There is already a folder called " + clean); return null; }
+  db.folders = db.folders || [];
+  db.folders.push(full);
+  if(store.mode === "folder"){
+    fetch(api("folders"), { method:"POST", headers:{ "Content-Type":"application/json" },
+                            body: JSON.stringify({ path: full }) }).catch(warnDisk);
+  }else saveDB();
+  renderHome();
+  toast("Folder created");
+  return full;
+}
+function renameFolderAt(from, to){
+  var clean = cleanFolderName(to);
+  if(!clean) return;
+  var parent = from.indexOf("/") > -1 ? from.slice(0, from.lastIndexOf("/")) : "";
+  var dest = parent ? parent + "/" + clean : clean;
+  if(dest === from) return;
+  if(folderExists(dest)){ toast("There is already a folder called " + clean); return; }
+  db.folders = (db.folders || []).map(function(p){
+    return p === from ? dest : (p.indexOf(from + "/") === 0 ? dest + p.slice(from.length) : p);
+  });
+  db.boards.forEach(function(b){
+    var f = b.folder || "";
+    if(f === from) b.folder = dest;
+    else if(f.indexOf(from + "/") === 0) b.folder = dest + f.slice(from.length);
+  });
+  if(cwd === from || cwd.indexOf(from + "/") === 0) cwd = dest + cwd.slice(from.length);
+  if(store.mode === "folder"){
+    fetch(api("folders"), { method:"PUT", headers:{ "Content-Type":"application/json" },
+                            body: JSON.stringify({ from: from, to: dest }) })
+      .then(function(){ lastWritten.clear(); })   /* paths changed; let the next save re-sync */
+      .catch(warnDisk);
+  }else saveDB();
+  renderHome();
+  toast("Folder renamed");
+}
+function deleteFolderAt(p){
+  var c = countInFolder(p);
+  var what = c.boards ? (c.boards + (c.boards === 1 ? " board" : " boards")) : "nothing";
+  var where = store.mode === "folder"
+    ? "The folder and everything in it moves to the _deleted folder."
+    : "The folder and everything in it is removed.";
+  if(!confirm("Delete the folder “" + folderLabel(p) + "”?\n\nIt holds " + what + ".\n" + where)) return;
+  db.boards = db.boards.filter(function(b){
+    var f = b.folder || "";
+    return !(f === p || f.indexOf(p + "/") === 0);
+  });
+  db.folders = (db.folders || []).filter(function(x){ return !(x === p || x.indexOf(p + "/") === 0); });
+  if(cwd === p || cwd.indexOf(p + "/") === 0) cwd = p.indexOf("/") > -1 ? p.slice(0, p.lastIndexOf("/")) : "";
+  if(store.mode === "folder"){
+    fetch(api("folders") + "?path=" + encodeURIComponent(p), { method:"DELETE" })
+      .then(function(){ lastWritten.clear(); })
+      .catch(warnDisk);
+  }else saveDB();
+  renderHome();
+  toast("Folder deleted");
+}
+function moveBoardTo(b, folder){
+  if((b.folder || "") === folder) return;
+  b.folder = folder;
+  b.updatedAt = Date.now();
+  saveDB();
+  renderHome();
+  toast("Moved to " + (folder ? folderLabel(folder) : "All boards"));
+}
+/* every folder you could move something into, as flat menu rows */
+function moveTargets(exclude){
+  var rows = [{ path:"", label:"All boards" }];
+  allFolders().forEach(function(p){
+    if(exclude && (p === exclude || p.indexOf(exclude + "/") === 0)) return;
+    rows.push({ path:p, label: p.split("/").join("  ›  ") });
+  });
+  return rows;
+}
+
+function renderCrumbs(){
+  var el = $("#crumbs");
+  el.innerHTML = "";
+  var parts = cwd ? cwd.split("/") : [];
+  function crumb(label, path, isHere){
+    var b = document.createElement("button");
+    b.className = "crumb" + (isHere ? " here" : " link");
+    b.textContent = label;
+    if(!isHere) b.addEventListener("click", function(){ cwd = path; renderHome(); });
+    el.appendChild(b);
+  }
+  crumb("All boards", "", parts.length === 0);
+  parts.forEach(function(seg, i){
+    var sep = document.createElement("span");
+    sep.className = "crumb-sep";
+    sep.textContent = "›";
+    el.appendChild(sep);
+    crumb(seg, parts.slice(0, i + 1).join("/"), i === parts.length - 1);
+  });
+}
+
 function renderHome(){
   var grid = $("#board-grid");
   grid.innerHTML = "";
-  var boards = db.boards.slice().sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
-  $("#board-count").textContent = boards.length ? boards.length + (boards.length===1?" board":" boards") : "";
+  renderCrumbs();
+
+  var subs = childFolders(cwd);
+  var boards = boardsIn(cwd).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
+  var bits = [];
+  if(subs.length) bits.push(subs.length + (subs.length===1?" folder":" folders"));
+  bits.push(boards.length + (boards.length===1?" board":" boards"));
+  $("#board-count").textContent = bits.join(" · ");
+
+  /* ---- folders first ---- */
+  subs.forEach(function(p){
+    var c = countInFolder(p);
+    var card = document.createElement("div");
+    card.className = "card folder";
+    card.tabIndex = 0;
+    card.setAttribute("role","button");
+    var top = document.createElement("div");
+    top.className = "folder-top";
+    top.innerHTML =
+      "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'>" +
+      "<path d='M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/></svg>" +
+      "<div style='min-width:0'><div class='folder-name'></div><div class='folder-count'></div></div>";
+    top.querySelector(".folder-name").textContent = folderLabel(p);
+    top.querySelector(".folder-count").textContent =
+      (c.boards ? c.boards + (c.boards===1?" board":" boards") : "empty") +
+      (c.subs ? "  ·  " + c.subs + (c.subs===1?" folder":" folders") : "");
+    card.appendChild(top);
+
+    var menuBtn = document.createElement("button");
+    menuBtn.className = "card-menu";
+    menuBtn.title = "Folder options";
+    menuBtn.innerHTML = "<svg viewBox='0 0 24 24' fill='currentColor'><circle cx='6' cy='12' r='1.7'/><circle cx='12' cy='12' r='1.7'/><circle cx='18' cy='12' r='1.7'/></svg>";
+    menuBtn.addEventListener("click", function(ev){ ev.stopPropagation(); folderMenu(p, menuBtn); });
+    card.appendChild(menuBtn);
+
+    card.addEventListener("click", function(){ cwd = p; renderHome(); });
+    card.addEventListener("keydown", function(ev){
+      if(ev.key==="Enter" || ev.key===" "){ ev.preventDefault(); cwd = p; renderHome(); }
+    });
+    /* a board card dropped on here moves into the folder */
+    card.addEventListener("dragover", function(ev){
+      if(dragBoardId){ ev.preventDefault(); card.classList.add("drop-here"); }
+    });
+    card.addEventListener("dragleave", function(){ card.classList.remove("drop-here"); });
+    card.addEventListener("drop", function(ev){
+      ev.preventDefault();
+      card.classList.remove("drop-here");
+      var b = db.boards.filter(function(x){ return x.id === dragBoardId; })[0];
+      if(b) moveBoardTo(b, p);
+    });
+    grid.appendChild(card);
+  });
 
   boards.forEach(function(b){
     var card = document.createElement("div");
     card.className = "card";
     card.tabIndex = 0;
+    card.draggable = true;
     card.setAttribute("role","button");
+    card.addEventListener("dragstart", function(ev){
+      dragBoardId = b.id;
+      card.classList.add("dragging");
+      try{ ev.dataTransfer.setData("text/plain", b.name || "board"); ev.dataTransfer.effectAllowed = "move"; }catch(e){}
+    });
+    card.addEventListener("dragend", function(){
+      dragBoardId = null;
+      card.classList.remove("dragging");
+      document.querySelectorAll(".card.drop-here").forEach(function(el){ el.classList.remove("drop-here"); });
+    });
     var nodes = 0, trees = b.trees.length;
     b.trees.forEach(function(t){ nodes += countAll(t.root); });
 
@@ -1528,9 +1774,21 @@ function renderHome(){
 
   var add = document.createElement("button");
   add.className = "card new";
-  add.innerHTML = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'><path d='M12 5v14M5 12h14'/></svg><span>New board</span>";
+  add.innerHTML = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'><path d='M12 5v14M5 12h14'/></svg><span>New board" + (cwd ? " in " + folderLabel(cwd) : "") + "</span>";
   add.addEventListener("click", newBoard);
   grid.appendChild(add);
+}
+
+function folderMenu(p, anchor){
+  openMenu(anchor, [
+    { label:"Open", icon:"M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z", run:function(){ cwd = p; renderHome(); } },
+    { label:"Rename", icon:"M4 20h4l10-10-4-4L4 16v4z", run:function(){
+        var name = prompt("Folder name", folderLabel(p));
+        if(name !== null) renameFolderAt(p, name);
+      }},
+    { sep:true },
+    { label:"Delete folder", danger:true, icon:"M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13", run:function(){ deleteFolderAt(p); } }
+  ]);
 }
 
 function thumbnail(b){
@@ -1582,7 +1840,8 @@ function thumbColor(n, parent, tree){
 }
 
 function newBoard(){
-  var b = { id: uid(), name: "Untitled board", createdAt: Date.now(), updatedAt: Date.now(), view:null, trees: [] };
+  var b = { id: uid(), name: "Untitled board", folder: cwd,
+            createdAt: Date.now(), updatedAt: Date.now(), view:null, trees: [] };
   db.boards.push(b);
   saveDB();
   openBoard(b.id);
@@ -1597,8 +1856,16 @@ function boardMenu(b, anchor){
         var copy = JSON.parse(JSON.stringify(b, clean));
         copy.id = uid(); copy.name = b.name + " copy";
         copy.createdAt = copy.updatedAt = Date.now();
+        copy.folder = b.folder || "";
         copy.trees.forEach(function(t){ t.id = uid(); walkAll(t.root, function(n){ n.id = uid(); }); });
         db.boards.push(copy); saveDB(); renderHome(); toast("Duplicated");
+      }},
+    { label:"Move to…", icon:"M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z", run:function(){
+        openMenu(anchor, moveTargets(null).map(function(t){
+          var here = (b.folder || "") === t.path;
+          return { label: (here ? String.fromCharCode(10003) + "  " : "     ") + t.label,
+                   run: function(){ moveBoardTo(b, t.path); } };
+        }));
       }},
     { label:"Download as JSON", icon:"M12 3v12M7 10l5 5 5-5M4 19h16", run:function(){
         downloadFile(fileSafe(b.name)+".json", JSON.stringify({version:1, board:b}, clean, 2));
@@ -2979,6 +3246,10 @@ function importBoards(text){
    Wiring
    ============================================================ */
 $("#new-btn").addEventListener("click", newBoard);
+$("#new-folder-btn").addEventListener("click", function(){
+  var name = prompt(cwd ? "New folder inside " + folderLabel(cwd) : "New folder", "");
+  if(name !== null) addFolder(name);
+});
 $("#file-input").addEventListener("change", function(ev){
   var f = ev.target.files && ev.target.files[0];
   if(!f) return;
@@ -3643,10 +3914,15 @@ function bootStorage(){
     if(!(info && info.ok)) return fallback();
     store.mode = "folder";
     store.dir = info.dir || "";
-    return fetch(api("boards"), { cache:"no-store" })
-      .then(function(r){ return r.json(); })
-      .then(function(list){
-        db = { boards: Array.isArray(list) ? list : [] };
+    return Promise.all([
+      fetch(api("boards"), { cache:"no-store" }).then(function(r){ return r.json(); }),
+      fetch(api("folders"), { cache:"no-store" })
+        .then(function(r){ return r.ok ? r.json() : []; })
+        .catch(function(){ return []; })
+    ]).then(function(got){
+        var list = got[0], folders = got[1];
+        db = { boards: Array.isArray(list) ? list : [],
+               folders: Array.isArray(folders) ? folders : [] };
         db.boards.forEach(function(b){ lastWritten.set(b.id, JSON.stringify(b, clean)); });
         if(!db.boards.length){ db.boards.push(sampleBoard()); saveDB(); }
         done();

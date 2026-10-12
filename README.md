@@ -43,6 +43,9 @@ On macOS and Linux there is no `.bat`; run `node server.js` in the folder.
 
 **Structure**
 
+- Folders to file boards away, nested as deep as you like. Under the launcher
+  these are real folders inside `boards/`, so a folder you make in the app
+  appears in Explorer and one you make in Explorer appears in the app
 - Many independent trees on one board, each to any depth
 - Branches fan right, left, or both ways from the trunk
 - Collapse any branch; it shows a count of what is hidden
@@ -132,7 +135,7 @@ reply into the **From an outline** tab.
 | `Branchboard.html` | the whole app — layout, styling and code in one file |
 | `Start Branchboard.bat` | the Windows launcher |
 | `server.js` | reads and writes the board files, and talks to Claude for picture import. Binds to `127.0.0.1` only, so no other machine can reach it |
-| `boards/` | your mind maps, one `.json` each. Not in this repository |
+| `boards/` | your mind maps, one `.json` each, inside whatever folders you make. Not in this repository |
 | `boards/_deleted/` | deleted boards land here with a date stamp |
 
 `boards/` is deliberately ignored by git. It is where your own thinking lives.
