@@ -1,4 +1,17 @@
-<!doctype html>
+  (function collect(el, b, i, u, h){
+    for(var k = 0; k < el.childNodes.length; k++){
+      var c = el.childNodes[k];
+      if(c.nodeType === 3){ if(c.nodeValue.length) texts.push({ tn:c, b:b, i:i, u:u, h:h }); continue; }
+      if(c.nodeType !== 1) continue;
+      var tag = c.tagName.toLowerCase();
+      collect(c,
+        b || tag === "b" || tag === "strong",
+        i || tag === "i" || tag === "em",
+        u || tag === "u",
+        h || tag === "mark");
+    }
+  })(lab, false, false, false, false);        var hay = mkPlain(n.text) + " " + mkPlain(n.note || "");  if(!e || !mkPlain(e.node.note || "").trim()){ scheduleHideNote(); return; }|| !mkPlain(e.node.note || "").trim()) return;  if(document.activeElement !== noteEl) mkRender(noteEl, e.node.note || "");
+  syncNoteBar();<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -28,6 +41,7 @@
   --dot:#C6D1D1;
   --accent:#0B7A6B;
   --on-color:#FFFFFF;
+  --hl:#FFE89A;
   --accent-soft:#E1F1EE;
   --danger:#C33B4E;
   --shadow-1:0 1px 2px rgba(15,23,25,.06), 0 2px 6px rgba(15,23,25,.05);
@@ -63,6 +77,7 @@
     --dot:#263336;
     --accent:#3FC7B0;
     --on-color:#0B1113;
+    --hl:#6B5A1F;
     --accent-soft:#12312D;
     --danger:#E2687C;
     --shadow-1:0 1px 2px rgba(0,0,0,.4);
@@ -93,6 +108,7 @@
   --dot:#263336;
   --accent:#3FC7B0;
   --on-color:#0B1113;
+  --hl:#6B5A1F;
   --accent-soft:#12312D;
   --danger:#E2687C;
   --shadow-1:0 1px 2px rgba(0,0,0,.4);
@@ -483,11 +499,38 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 }
 .seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-1)}
 #note{
-  width:100%;min-height:70px;resize:vertical;font:inherit;font-size:13px;
+  width:100%;min-height:70px;max-height:230px;overflow:auto;
+  font:inherit;font-size:13px;line-height:1.55;
   padding:8px 9px;border-radius:9px;border:1px solid var(--line);
   background:var(--surface);color:var(--ink);outline:none;
+  white-space:pre-wrap;overflow-wrap:break-word;
+  cursor:text;
 }
 #note:focus{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
+#note:empty::before{content:attr(data-placeholder);color:var(--ink-3)}
+#note[aria-disabled="true"]{opacity:.45;pointer-events:none}
+
+/* the four style buttons that sit on the Note label */
+.field > label{display:flex;align-items:center;gap:6px}
+.note-tools{margin-left:auto;display:flex;gap:1px}
+.note-tools .nf{
+  width:21px;height:21px;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;line-height:1;color:var(--ink-3);
+  font-family:var(--font-display);text-transform:none;letter-spacing:0;
+}
+.note-tools .nf:hover{background:var(--surface-3);color:var(--ink)}
+.note-tools .nf.on{background:var(--accent-soft);color:var(--accent)}
+.note-tools .hl{background:var(--hl);padding:0 2px;border-radius:2px;color:var(--ink)}
+
+/* highlighted words, in a note or on the canvas */
+mark{
+  background:var(--hl);
+  color:var(--ink);        /* the wash is light in day, dark at night - ink reads on both,
+                             including inside a dark root box where the text is otherwise pale */
+  padding:0 1px;border-radius:3px;
+}
+.node-label mark{padding:0 2px}
 .insp-foot{
   margin-top:auto;padding:11px 14px;border-top:1px solid var(--line);
   display:flex;flex-direction:column;gap:7px;
@@ -560,7 +603,7 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 /* ---------- the note that floats up when you hover a box ---------- */
 #notepop{
   position:absolute;z-index:45;display:none;
-  max-width:300px;max-height:240px;overflow:auto;
+  max-width:300px;max-height:240px;overflow:auto;overscroll-behavior:contain;
   padding:10px 12px;border-radius:11px;
   background:var(--surface);
   border:1px solid var(--line);
@@ -624,6 +667,7 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 #formatbar .fmt:hover{background:var(--surface-2);color:var(--ink)}
 #formatbar .fmt.on{background:var(--accent-soft);color:var(--accent)}
 #formatbar .fmt b,#formatbar .fmt i,#formatbar .fmt u{font-family:var(--font-display)}
+#formatbar .fmt .hl{background:var(--hl);color:var(--ink);padding:0 3px;border-radius:3px;font-family:var(--font-display);font-weight:700}
 #formatbar .divider{height:16px;margin:0 2px}
 
 /* emphasis inside a box */
@@ -868,6 +912,7 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
     <button class="fmt" id="fmt-bold" title="Bold (Ctrl+B)"><b>B</b></button>
     <button class="fmt" id="fmt-italic" title="Italic (Ctrl+I)"><i>I</i></button>
     <button class="fmt" id="fmt-underline" title="Underline (Ctrl+U)"><u>U</u></button>
+    <button class="fmt" id="fmt-highlight" title="Highlight (Ctrl+Shift+H)"><span class="hl">H</span></button>
     <span class="divider"></span>
     <button class="fmt wide" id="fmt-emoji" title="Insert an emoji (Ctrl+E)">&#128512;</button>
     <button class="fmt wide" id="fmt-clear" title="Remove styling">&#10005;</button>
@@ -926,8 +971,17 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
         </div>
       </div>
       <div class="field">
-        <label>Note</label>
-        <textarea id="note" placeholder="Detail that does not belong on the canvas…" spellcheck="false"></textarea>
+        <label>Note
+          <span class="note-tools" id="note-tools">
+            <button class="nf" id="nf-bold" title="Bold (Ctrl+B)"><b>B</b></button>
+            <button class="nf" id="nf-italic" title="Italic (Ctrl+I)"><i>I</i></button>
+            <button class="nf" id="nf-underline" title="Underline (Ctrl+U)"><u>U</u></button>
+            <button class="nf" id="nf-highlight" title="Highlight (Ctrl+Shift+H)"><span class="hl">H</span></button>
+            <button class="nf" id="nf-clear" title="Remove styling">&#10005;</button>
+          </span>
+        </label>
+        <div id="note" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true"
+             data-placeholder="Detail that does not belong on the canvas…"></div>
       </div>
       <div class="stat"><span id="stat-depth"></span><span id="stat-desc"></span></div>
     </div>
@@ -962,6 +1016,7 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
           <li><span>Edit text</span> <span class="kbd">F2</span></li>
           <li><span>Line break while editing</span> <span class="kbd">Shift + Enter</span></li>
           <li><span>Bold / italic / underline</span> <span class="kbd">Ctrl + B / I / U</span></li>
+          <li><span>Highlight</span> <span class="kbd">Ctrl + H</span></li>
           <li><span>Emoji into the words</span> <span class="kbd">Ctrl + E</span></li>
           <li><span>Delete</span> <span class="kbd">Delete</span></li>
           <li><span>Duplicate</span> <span class="kbd">Ctrl + D</span></li>
@@ -1085,12 +1140,18 @@ function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&am
    they are just characters.
    ============================================================ */
 var MK_U  = /<u>([\s\S]*?)<\/u>/;
+var MK_H  = /==(\S(?:[\s\S]*?\S)?)==/;          /* highlight, the usual Markdown for it */
 var MK_B  = /\*\*(\S(?:[\s\S]*?\S)?)\*\*/;      /* no space beside the stars, so "3 * 4 * 5" stays arithmetic */
 var MK_I  = /\*(\S(?:[\s\S]*?\S)?)\*/;
 
+var MK_FLAGS = ["b", "i", "u", "h"];
+function mkSame(a, b){
+  return a.b === b.b && a.i === b.i && a.u === b.u && a.h === b.h;
+}
+
 function mkNextMarker(s){
   var best = null;
-  [[MK_U, "u", 7], [MK_B, "b", 4], [MK_I, "i", 2]].forEach(function(spec){
+  [[MK_U, "u", 7], [MK_H, "h", 5], [MK_B, "b", 4], [MK_I, "i", 2]].forEach(function(spec){
     var m = spec[0].exec(s);
     if(!m) return;
     if(!best || m.index < best.index || (m.index === best.index && spec[2] > best.pad)){
@@ -1100,26 +1161,27 @@ function mkNextMarker(s){
   return best;
 }
 
-/* markup string -> [{text, b, i, u}] */
+/* markup string -> [{text, b, i, u, h}] */
 function mkParse(s){
   var runs = [];
-  function push(t, b, i, u){
+  function push(t, f){
     if(!t) return;
     var last = runs[runs.length - 1];
-    if(last && last.b === b && last.i === i && last.u === u) last.text += t;
-    else runs.push({ text:t, b:b, i:i, u:u });
+    if(last && mkSame(last, f)) last.text += t;
+    else runs.push({ text:t, b:f.b, i:f.i, u:f.u, h:f.h });
   }
-  (function walk(str, b, i, u){
+  (function walk(str, f){
     var at = 0;
     while(at < str.length){
       var rest = str.slice(at);
       var m = mkNextMarker(rest);
-      if(!m){ push(rest, b, i, u); return; }
-      if(m.index > 0) push(rest.slice(0, m.index), b, i, u);
-      walk(m.inner, b || m.kind === "b", i || m.kind === "i", u || m.kind === "u");
+      if(!m){ push(rest, f); return; }
+      if(m.index > 0) push(rest.slice(0, m.index), f);
+      walk(m.inner, { b: f.b || m.kind === "b", i: f.i || m.kind === "i",
+                      u: f.u || m.kind === "u", h: f.h || m.kind === "h" });
       at += m.end;
     }
-  })(String(s == null ? "" : s), false, false, false);
+  })(String(s == null ? "" : s), { b:false, i:false, u:false, h:false });
   return runs;
 }
 
@@ -1136,6 +1198,7 @@ function mkRender(el, s){
   el.textContent = "";
   mkParse(s).forEach(function(r){
     var node = document.createTextNode(r.text);
+    if(r.h){ var h = document.createElement("mark"); h.appendChild(node); node = h; }
     if(r.u){ var u = document.createElement("u"); u.appendChild(node); node = u; }
     if(r.i){ var i = document.createElement("i"); i.appendChild(node); node = i; }
     if(r.b){ var b = document.createElement("b"); b.appendChild(node); node = b; }
@@ -1146,32 +1209,37 @@ function mkRender(el, s){
 /* what the browser left in the editable box -> runs */
 function mkDomRuns(root){
   var runs = [];
-  function push(t, b, i, u){
+  var blank = { b:false, i:false, u:false, h:false };
+  function push(t, f){
     if(!t) return;
     var last = runs[runs.length - 1];
-    if(last && last.b === b && last.i === i && last.u === u) last.text += t;
-    else runs.push({ text:t, b:b, i:i, u:u });
+    if(last && mkSame(last, f)) last.text += t;
+    else runs.push({ text:t, b:f.b, i:f.i, u:f.u, h:f.h });
   }
-  (function walk(node, b, i, u){
+  (function walk(node, f){
     for(var k = 0; k < node.childNodes.length; k++){
       var c = node.childNodes[k];
-      if(c.nodeType === 3){ push(c.nodeValue, b, i, u); continue; }
+      if(c.nodeType === 3){ push(c.nodeValue, f); continue; }
       if(c.nodeType !== 1) continue;
       var tag = c.tagName.toLowerCase();
-      if(tag === "br"){ push("\n", false, false, false); continue; }
+      if(tag === "br"){ push("\n", blank); continue; }
       if(tag === "div" || tag === "p"){
-        if(runs.length) push("\n", false, false, false);
-        walk(c, b, i, u);
+        if(runs.length) push("\n", blank);
+        walk(c, f);
         continue;
       }
       var st = c.style || {};
       var w = (st.fontWeight || "") + "";
-      walk(c,
-        b || tag === "b" || tag === "strong" || w === "bold" || (parseInt(w, 10) >= 600),
-        i || tag === "i" || tag === "em" || st.fontStyle === "italic",
-        u || tag === "u" || ((st.textDecoration || "") + (st.textDecorationLine || "")).indexOf("underline") > -1);
+      var bg = (st.backgroundColor || st.background || "") + "";
+      walk(c, {
+        b: f.b || tag === "b" || tag === "strong" || w === "bold" || (parseInt(w, 10) >= 600),
+        i: f.i || tag === "i" || tag === "em" || st.fontStyle === "italic",
+        u: f.u || tag === "u" || ((st.textDecoration || "") + (st.textDecorationLine || "")).indexOf("underline") > -1,
+        h: f.h || tag === "mark" ||
+           (!!bg && bg !== "transparent" && bg.indexOf("rgba(0, 0, 0, 0)") === -1)
+      });
     }
-  })(root, false, false, false);
+  })(root, blank);
   return runs;
 }
 
@@ -1181,13 +1249,14 @@ function mkEmit(runs){
   runs.forEach(function(r){
     var t = r.text.replace(new RegExp(String.fromCharCode(160), "g"), " ");
     if(!t) return;
-    if(!r.b && !r.i && !r.u){ out += t; return; }
+    if(!r.b && !r.i && !r.u && !r.h){ out += t; return; }
     /* keep whitespace outside the markers, or it will not parse back */
     var lead = /^\s*/.exec(t)[0];
     var core = t.slice(lead.length);
     var trail = /\s*$/.exec(core)[0];
     core = core.slice(0, core.length - trail.length);
     if(!core){ out += t; return; }
+    if(r.h) core = "==" + core + "==";
     if(r.u) core = "<u>" + core + "</u>";
     if(r.i) core = "*" + core + "*";
     if(r.b) core = "**" + core + "**";
@@ -1244,7 +1313,7 @@ function mkSetSel(el, start, end){
 function mkChars(runs){
   var chars = [];
   runs.forEach(function(r){
-    for(var i = 0; i < r.text.length; i++) chars.push({ c:r.text.charAt(i), b:r.b, i:r.i, u:r.u });
+    for(var i = 0; i < r.text.length; i++) chars.push({ c:r.text.charAt(i), b:r.b, i:r.i, u:r.u, h:r.h });
   });
   return chars;
 }
@@ -1252,8 +1321,8 @@ function mkRunsFromChars(chars){
   var runs = [];
   chars.forEach(function(ch){
     var last = runs[runs.length - 1];
-    if(last && last.b === ch.b && last.i === ch.i && last.u === ch.u) last.text += ch.c;
-    else runs.push({ text:ch.c, b:ch.b, i:ch.i, u:ch.u });
+    if(last && mkSame(last, ch)) last.text += ch.c;
+    else runs.push({ text:ch.c, b:ch.b, i:ch.i, u:ch.u, h:ch.h });
   });
   return runs;
 }
@@ -2005,7 +2074,7 @@ function makeNodeEl(n, depth){
     lk.textContent = String.fromCharCode(0x2197);
     el.appendChild(lk);
   }
-  if(n.note && n.note.trim()){
+  if(n.note && mkPlain(n.note).trim()){
     var d = document.createElement("i");
     d.className = "dot-note";
     el.appendChild(d);
@@ -2462,7 +2531,8 @@ function syncInspector(){
     var el = $(s); if(!el) return;
     if(el.tagName === "BUTTON") el.disabled = many; else el.style.opacity = many ? ".45" : "";
   });
-  $("#note").disabled = many;
+  noteEl.setAttribute("aria-disabled", many ? "true" : "false");
+  noteEl.contentEditable = many ? "false" : "true";
   Array.prototype.forEach.call($("#swatches").children, function(sw){
     sw.classList.toggle("on", (sw.dataset.color || null) === (e.node.color || null));
   });
@@ -2470,8 +2540,8 @@ function syncInspector(){
   Array.prototype.forEach.call($("#dir-seg").children, function(b){
     b.classList.toggle("on", b.dataset.dir === (e.tree.dir || "right"));
   });
-  var note = $("#note");
-  if(document.activeElement !== note) note.value = e.node.note || "";
+  if(document.activeElement !== noteEl) mkRender(noteEl, e.node.note || "");
+  syncNoteBar();
   $("#stat-depth").textContent = e.node.children.length + (e.node.children.length===1?" child":" children");
   $("#stat-desc").textContent = countDesc(e.node) + " in branch";
   $("#i-collapse").textContent = e.node.collapsed ? "Expand" : "Collapse";
@@ -2495,18 +2565,34 @@ var draggingEl = null, dragState = null;
    it does not flash while the pointer crosses the board, and it
    gets out of the way the instant anything else starts.
    ============================================================ */
+var noteEl = $("#note");
 var notePop = $("#notepop");
-var noteTimer = null, noteFor = null;
+var noteTimer = null, noteHideTimer = null, noteFor = null;
 
-function hideNote(){
+/* Leaving the box does not hide the note straight away. The card sits a
+   few pixels clear of the box, so reaching it means crossing bare canvas -
+   hiding on that first step would make the card impossible to reach. The
+   grace period ends the moment the pointer lands anywhere meaningful. */
+function scheduleHideNote(){
   clearTimeout(noteTimer);
   noteTimer = null;
+  clearTimeout(noteHideTimer);
+  noteHideTimer = setTimeout(hideNote, 260);
+}
+function keepNote(){
+  clearTimeout(noteHideTimer);
+  noteHideTimer = null;
+}
+function hideNote(){
+  clearTimeout(noteTimer);
+  clearTimeout(noteHideTimer);
+  noteTimer = noteHideTimer = null;
   noteFor = null;
   if(notePop) notePop.classList.remove("on");
 }
 function showNoteFor(id){
   var e = index.get(id);
-  if(!e || !e.node.note || !e.node.note.trim()) return;
+  if(!e || !mkPlain(e.node.note || "").trim()) return;
   noteFor = id;
   notePop.innerHTML = "";
   notePop.style.setProperty("--c", "var(" + effProp(id) + ")");
@@ -2520,7 +2606,7 @@ function showNoteFor(id){
 
   var body = document.createElement("div");
   body.className = "np-body";
-  body.textContent = e.node.note;
+  mkRender(body, e.node.note);
 
   notePop.appendChild(head);
   notePop.appendChild(body);
@@ -2532,8 +2618,8 @@ function placeNote(nodeEl){
   var r = nodeEl.getBoundingClientRect();
   var w = notePop.offsetWidth, h = notePop.offsetHeight;
   var left = clamp(r.left + r.width/2 - w/2 - cr.left, 10, Math.max(10, cr.width - w - 10));
-  var top = r.bottom - cr.top + 10;
-  if(top + h > cr.height - 10) top = r.top - cr.top - h - 10;   /* flip above when there is no room */
+  var top = r.bottom - cr.top + 6;
+  if(top + h > cr.height - 10) top = r.top - cr.top - h - 6;   /* flip above when there is no room */
   if(top < 10) top = 10;
   notePop.style.left = left + "px";
   notePop.style.top = top + "px";
@@ -2542,24 +2628,27 @@ function placeNote(nodeEl){
 canvas.addEventListener("mouseover", function(ev){
   if(editingId || dragState || panning) return;
   var nodeEl = ev.target.closest ? ev.target.closest(".node") : null;
-  if(!nodeEl){
-    /* staying on the popup itself keeps it up, so a long note can be read */
-    if(!(ev.target.closest && ev.target.closest("#notepop"))) hideNote();
-    return;
-  }
+  if(!nodeEl){ scheduleHideNote(); return; }   /* bare canvas: give the pointer a moment */
   var id = nodeEl.dataset.id;
-  if(id === noteFor) return;
+  if(id === noteFor){ keepNote(); return; }    /* back on the box the note belongs to */
   var e = index.get(id);
   clearTimeout(noteTimer);
-  if(!e || !e.node.note || !e.node.note.trim()){ hideNote(); return; }
+  if(!e || !mkPlain(e.node.note || "").trim()){ scheduleHideNote(); return; }
+  keepNote();
   noteTimer = setTimeout(function(){ showNoteFor(id); }, 320);
 });
-canvas.addEventListener("mouseleave", function(ev){
-  if(ev.relatedTarget && notePop.contains(ev.relatedTarget)) return;   /* moving onto the note itself */
-  hideNote();
-});
+canvas.addEventListener("mouseleave", scheduleHideNote);
+
+/* on the card itself: stay, and let the wheel scroll it instead of the board */
+notePop.addEventListener("mouseenter", keepNote);
+notePop.addEventListener("mouseover", keepNote);
 notePop.addEventListener("mouseleave", hideNote);
-document.addEventListener("pointerdown", hideNote, true);
+notePop.addEventListener("wheel", function(ev){ ev.stopPropagation(); }, { passive:true });
+
+document.addEventListener("pointerdown", function(ev){
+  if(notePop.contains(ev.target)) return;      /* clicking inside the note, e.g. to drag its scrollbar */
+  hideNote();
+}, true);
 
 canvas.addEventListener("pointerdown", function(ev){
   hideNote();
@@ -2858,6 +2947,7 @@ document.addEventListener("keydown", function(ev){
       if(fk === "b"){ ev.preventDefault(); applyFormat("b"); return; }
       if(fk === "i"){ ev.preventDefault(); applyFormat("i"); return; }
       if(fk === "u" && !ev.shiftKey){ ev.preventDefault(); applyFormat("u"); return; }
+      if(fk === "h"){ ev.preventDefault(); applyFormat("h"); return; }
       if(fk === "e"){ ev.preventDefault(); openEmojiPicker(); return; }
     }
     if(ev.key === "Enter" && meta){          /* sibling above */
@@ -3063,18 +3153,19 @@ function domLines(nodeEl){
 
   /* every text node in the label, each carrying the emphasis it sits under */
   var texts = [];
-  (function collect(el, b, i, u){
+  (function collect(el, b, i, u, h){
     for(var k = 0; k < el.childNodes.length; k++){
       var c = el.childNodes[k];
-      if(c.nodeType === 3){ if(c.nodeValue.length) texts.push({ tn:c, b:b, i:i, u:u }); continue; }
+      if(c.nodeType === 3){ if(c.nodeValue.length) texts.push({ tn:c, b:b, i:i, u:u, h:h }); continue; }
       if(c.nodeType !== 1) continue;
       var tag = c.tagName.toLowerCase();
       collect(c,
         b || tag === "b" || tag === "strong",
         i || tag === "i" || tag === "em",
-        u || tag === "u");
+        u || tag === "u",
+        h || tag === "mark");
     }
-  })(lab, false, false, false);
+  })(lab, false, false, false, false);
   if(!texts.length) return null;
 
   /* split each one wherever the browser wrapped it */
@@ -3094,7 +3185,8 @@ function domLines(nodeEl){
                  dy: (r.top + r.height/2 - box.top)/z,
                  w: r.width/z,
                  bottom: (r.bottom - box.top)/z,
-                 b: t.b, i: t.i, u: t.u });
+                 top: (r.top - box.top)/z,
+                 h: t.h, b: t.b, i: t.i, u: t.u });
     }
     for(var c = 0; c < s.length; c++){
       range.setStart(t.tn, c); range.setEnd(t.tn, c + 1);
@@ -3221,7 +3313,16 @@ function renderPNG(){
       var lines = e ? domLines(e.el) : null;
       if(lines && lines.length){
         var baseWeight = sp.font.split(" ")[0];
+        var HL = cssVal("--hl");
         lines.forEach(function(L){
+          if(L.h){                                   /* the highlighter goes down first */
+            ctx.fillStyle = HL;
+            var hy = (L.top != null ? y + L.top : y + L.dy - fontPx * 0.72);
+            roundRect(ctx, x + L.dx - 1, hy, L.w + 2, fontPx * 1.45, 3);
+            ctx.fill();
+          }
+          /* on the wash, ink reads; the box's own colour may not */
+          ctx.fillStyle = L.h ? INK : textCol;
           var weight = L.b ? (parseInt(baseWeight, 10) >= 700 ? "800" : "700") : baseWeight;
           ctx.font = (L.i ? "italic " : "") + weight + " " + fontPx + "px " +
                      "'Public Sans', system-ui, sans-serif";
@@ -3285,7 +3386,11 @@ function toMarkdown(){
 function mdNode(n, indent, out){
   var pad = new Array(indent*2 + 1).join(" ");
   out.push(pad + "- " + (n.text || "").replace(/\n/g, " "));
-  if(n.note && n.note.trim()) out.push(pad + "  _" + n.note.replace(/\n/g," ") + "_");
+  /* the note goes out as a quote line, so any **bold** or ==highlight== in it
+     stays valid Markdown instead of being wrapped in another pair of markers */
+  if(n.note && mkPlain(n.note).trim()){
+    out.push(pad + "  > " + n.note.replace(new RegExp(String.fromCharCode(10), "g"), " "));
+  }
   n.children.forEach(function(c){ mdNode(c, indent+1, out); });
 }
 
@@ -3451,19 +3556,44 @@ bn.addEventListener("blur", function(){
   if(!bn.textContent.trim()){ bn.textContent = board.name; }
 });
 
-$("#note").addEventListener("input", function(){
+/* ---- the note field ---- */
+function saveNoteFromField(){
   var e = sel ? index.get(sel) : null;
   if(!e) return;
-  var had = !!(e.node.note && e.node.note.trim());
-  e.node.note = $("#note").value;
-  var has = !!e.node.note.trim();
+  var had = !!(e.node.note && mkPlain(e.node.note).trim());
+  e.node.note = mkFromDom(noteEl);
+  var has = !!mkPlain(e.node.note).trim();
   if(had !== has){
     var dot = e.el.querySelector(".dot-note");
     if(has && !dot){ var d = document.createElement("i"); d.className = "dot-note"; e.el.appendChild(d); }
     if(!has && dot) dot.remove();
   }
   touch();
+}
+noteEl.addEventListener("input", saveNoteFromField);
+noteEl.addEventListener("focus", syncNoteBar);
+noteEl.addEventListener("blur", function(){ saveNoteFromField(); syncNoteBar(); });
+noteEl.addEventListener("paste", function(ev){
+  ev.preventDefault();
+  var txt = (ev.clipboardData || window.clipboardData).getData("text");
+  document.execCommand("insertText", false, String(txt).replace(new RegExp(String.fromCharCode(13), "g"), ""));
 });
+noteEl.addEventListener("keydown", function(ev){
+  var meta = ev.ctrlKey || ev.metaKey;
+  if(!meta) return;
+  var k = ev.key.toLowerCase();
+  if(k === "b"){ ev.preventDefault(); applyFormat("b", noteEl); return; }
+  if(k === "i"){ ev.preventDefault(); applyFormat("i", noteEl); return; }
+  if(k === "u" && !ev.shiftKey){ ev.preventDefault(); applyFormat("u", noteEl); return; }
+  if(k === "h"){ ev.preventDefault(); applyFormat("h", noteEl); return; }
+});
+[["nf-bold","b"],["nf-italic","i"],["nf-underline","u"],["nf-highlight","h"]].forEach(function(p){
+  var btn = $("#" + p[0]);
+  btn.addEventListener("mousedown", function(ev){ ev.preventDefault(); });
+  btn.addEventListener("click", function(){ applyFormat(p[1], noteEl); });
+});
+$("#nf-clear").addEventListener("mousedown", function(ev){ ev.preventDefault(); });
+$("#nf-clear").addEventListener("click", function(){ clearFormat(noteEl); });
 Array.prototype.forEach.call($("#dir-seg").children, function(b){
   b.addEventListener("click", function(){
     var e = sel ? index.get(sel) : null;
@@ -3478,7 +3608,14 @@ $("#i-collapse").addEventListener("click", function(){ toggleCollapse(sel); });
 $("#i-detach").addEventListener("click", detachSel);
 $("#i-delete").addEventListener("click", deleteSel);
 
-window.addEventListener("blur", function(){ spaceDown = false; canvas.classList.remove("panready"); });
+window.addEventListener("blur", function(){
+  spaceDown = false;
+  canvas.classList.remove("panready");
+  /* a release we never saw would otherwise leave the board thinking a drag
+     is still going, which quietly stops hover notes */
+  dragState = null; panning = null;
+  canvas.classList.remove("panning");
+});
 window.addEventListener("beforeunload", function(){
   commitEdit();
   if(store.mode === "folder"){
@@ -3551,7 +3688,7 @@ function runSearch(){
   if(q){
     board.trees.forEach(function(tree){
       walkAll(tree.root, function(n){
-        var hay = mkPlain(n.text) + " " + (n.note || "");
+        var hay = mkPlain(n.text) + " " + mkPlain(n.note || "");
         if(hay.toLowerCase().indexOf(q) > -1) hits.push({ id:n.id, tree:tree, node:n });
       });
     });
@@ -3629,66 +3766,89 @@ function hideFormatBar(){
   closeEmojiPicker();
 }
 /* light up whichever styles the selection is wholly inside */
+/* Which rich field the style buttons act on: a box on the canvas while
+   one is being typed into, otherwise the note field in the panel. */
+function richField(){
+  if(editingId && editingLabel) return editingLabel;
+  if(noteEl && document.activeElement === noteEl) return noteEl;
+  return null;
+}
+function afterRichChange(el){
+  if(el === editingLabel){
+    applyPositions();                 /* bold is wider - relayout as it changes */
+    positionFormatBar(editingEl);
+    syncFormatBar();
+  }else{
+    saveNoteFromField();
+    syncNoteBar();
+  }
+}
+
 function syncFormatBar(){
   if(!editingId || !editingLabel) return;
-  var span = formatSpan();
-  ["b","i","u"].forEach(function(k, n){
-    $("#" + ["fmt-bold","fmt-italic","fmt-underline"][n]).classList.toggle("on", !!(span && span[k]));
+  var span = formatSpan(editingLabel);
+  MK_FLAGS.forEach(function(k, n){
+    var btn = $("#" + ["fmt-bold","fmt-italic","fmt-underline","fmt-highlight"][n]);
+    if(btn) btn.classList.toggle("on", !!(span && span[k]));
+  });
+}
+function syncNoteBar(){
+  var span = (noteEl && document.activeElement === noteEl) ? formatSpan(noteEl) : null;
+  MK_FLAGS.forEach(function(k, n){
+    var btn = $("#" + ["nf-bold","nf-italic","nf-underline","nf-highlight"][n]);
+    if(btn) btn.classList.toggle("on", !!(span && span[k]));
   });
 }
 /* which flags are on across the whole selection (or the caret's character) */
-function formatSpan(){
-  var chars = mkChars(mkDomRuns(editingLabel));
-  var off = mkSelOffsets(editingLabel);
+function formatSpan(el){
+  if(!el) return null;
+  var chars = mkChars(mkDomRuns(el));
+  var off = mkSelOffsets(el);
   if(!chars.length || !off) return null;
   var a = off.start, z = off.end;
   if(a === z){ a = Math.max(0, a - 1); z = a + 1; }        /* caret: look at the character behind it */
-  var res = { b:true, i:true, u:true };
+  var res = { b:true, i:true, u:true, h:true };
   var seen = false;
   for(var k = a; k < z && k < chars.length; k++){
     seen = true;
-    if(!chars[k].b) res.b = false;
-    if(!chars[k].i) res.i = false;
-    if(!chars[k].u) res.u = false;
+    MK_FLAGS.forEach(function(f){ if(!chars[k][f]) res[f] = false; });
   }
   return seen ? res : null;
 }
-/* kind is "b", "i" or "u" */
-function applyFormat(kind){
-  if(!editingId || !editingLabel) return;
-  var lab = editingLabel;
-  var off = mkSelOffsets(lab);
-  var chars = mkChars(mkDomRuns(lab));
+/* kind is "b", "i", "u" or "h" */
+function applyFormat(kind, target){
+  var el = target || richField();
+  if(!el) return;
+  var off = mkSelOffsets(el);
+  var chars = mkChars(mkDomRuns(el));
   if(!chars.length) return;
   var a = off ? off.start : 0, z = off ? off.end : chars.length;
-  if(a === z){ a = 0; z = chars.length; }                  /* nothing picked out: style the whole box */
+  if(a === z){ a = 0; z = chars.length; }                  /* nothing picked out: style the whole field */
   z = Math.min(z, chars.length);
   var allOn = true;
   for(var k = a; k < z; k++) if(!chars[k][kind]){ allOn = false; break; }
   for(var k2 = a; k2 < z; k2++) chars[k2][kind] = !allOn;
 
-  mkRender(lab, mkEmit(mkRunsFromChars(chars)));
-  lab.focus();
-  mkSetSel(lab, a, z);
-  syncFormatBar();
-  applyPositions();          /* bold is wider - relayout as it changes */
-  positionFormatBar(editingEl);
+  mkRender(el, mkEmit(mkRunsFromChars(chars)));
+  el.focus();
+  mkSetSel(el, a, z);
+  afterRichChange(el);
 }
-function clearFormat(){
-  if(!editingId || !editingLabel) return;
-  var lab = editingLabel;
-  var off = mkSelOffsets(lab);
-  var chars = mkChars(mkDomRuns(lab));
+function clearFormat(target){
+  var el = target || richField();
+  if(!el) return;
+  var off = mkSelOffsets(el);
+  var chars = mkChars(mkDomRuns(el));
   if(!chars.length) return;
   var a = off ? off.start : 0, z = off ? off.end : chars.length;
   if(a === z){ a = 0; z = chars.length; }
-  for(var k = a; k < Math.min(z, chars.length); k++){ chars[k].b = chars[k].i = chars[k].u = false; }
-  mkRender(lab, mkEmit(mkRunsFromChars(chars)));
-  lab.focus();
-  mkSetSel(lab, a, z);
-  syncFormatBar();
-  applyPositions();
-  positionFormatBar(editingEl);
+  for(var k = a; k < Math.min(z, chars.length); k++){
+    MK_FLAGS.forEach(function(f){ chars[k][f] = false; });
+  }
+  mkRender(el, mkEmit(mkRunsFromChars(chars)));
+  el.focus();
+  mkSetSel(el, a, z);
+  afterRichChange(el);
 }
 function insertAtCaret(text){
   if(!editingId || !editingLabel) return;
@@ -3707,8 +3867,8 @@ function insertAtCaret(text){
   positionFormatBar(editingEl);
 }
 
-["fmt-bold","fmt-italic","fmt-underline"].forEach(function(id, k){
-  var cmd = ["b","i","u"][k];
+["fmt-bold","fmt-italic","fmt-underline","fmt-highlight"].forEach(function(id, k){
+  var cmd = ["b","i","u","h"][k];
   $("#" + id).addEventListener("mousedown", function(ev){ ev.preventDefault(); });
   $("#" + id).addEventListener("click", function(){ applyFormat(cmd); });
 });

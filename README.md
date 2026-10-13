@@ -53,7 +53,8 @@ On macOS and Linux there is no `.bat`; run `node server.js` in the folder.
   below the middle slots it in as a sibling, and an amber line shows you which.
   Drop it well clear of everything and it becomes a tree of its own.
 - Eight branch colours, inherited down each branch
-- Bold, italic and underline inside the words, and emoji anywhere in the text
+- Bold, italic, underline and highlight inside the words, and emoji anywhere in
+  the text — on a box and in its note alike
 - An emoji and a link pinned to any box, plus a longer note that stays off the
   canvas. A box with a note carries a small dot; hover it and the note floats up,
   so you can read the detail without selecting anything
@@ -92,15 +93,17 @@ The mind-map shortcuts follow Whimsical's, so muscle memory carries over.
 | `Ctrl + F` | find in this board |
 | `Shift + 1`…`8` | colour the branch |
 | `Ctrl + B` / `I` / `U` | bold, italic, underline the selected words |
+| `Ctrl + H` | highlight the selected words |
 | `Ctrl + E` | drop an emoji into the words |
 | `Shift + X` | pin an emoji to the front of a box |
 | `= - 0 1 2` | zoom in, out, 100%, fit, fit selection |
 | `Space + drag` | move the canvas |
 
 Styling is stored as Markdown inside the text itself — `**bold**`, `*italic*`,
-`<u>underline</u>` — so the saved `.json` still reads as words, the Markdown
-export needs no conversion, and an outline round-trips unchanged. A style bar
-appears over a box while you type in it.
+`<u>underline</u>`, `==highlight==` — so the saved `.json` still reads as words,
+the Markdown export needs no conversion, and an outline round-trips unchanged.
+A style bar appears over a box while you type in it; the note field in the
+panel has the same four buttons.
 
 Copy and paste are worth knowing. Copying a branch puts it on the clipboard as
 plain indented text, so it pastes into any other app. Pasting an indented list
