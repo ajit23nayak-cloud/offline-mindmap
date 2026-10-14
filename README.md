@@ -73,6 +73,13 @@ On macOS and Linux there is no `.bat`; run `node server.js` in the folder.
 
 PNG image, Markdown outline, or JSON that imports straight back.
 
+**Read aloud**
+
+The play button on the panel reads the selected box and its note; the one on the
+Note label reads just the note. `P` does the same from the keyboard, and the box
+being read pulses so you can see where you are. It uses the voices already on
+your computer, so it costs nothing and works with the internet off.
+
 ---
 
 ## Keyboard
@@ -94,6 +101,7 @@ The mind-map shortcuts follow Whimsical's, so muscle memory carries over.
 | `Shift + 1`…`8` | colour the branch |
 | `Ctrl + B` / `I` / `U` | bold, italic, underline the selected words |
 | `Ctrl + H` | highlight the selected words |
+| `P` | read the selected box and its note out loud |
 | `Ctrl + E` | drop an emoji into the words |
 | `Shift + X` | pin an emoji to the front of a box |
 | `= - 0 1 2` | zoom in, out, 100%, fit, fit selection |

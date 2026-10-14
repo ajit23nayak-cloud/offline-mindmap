@@ -477,7 +477,32 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
   font-family:var(--font-mono);font-size:10px;letter-spacing:.09em;
   text-transform:uppercase;color:var(--ink-3);
 }
-.insp-title{font-size:14px;font-weight:600;line-height:1.35;margin-top:3px;overflow-wrap:break-word}
+.insp-title{font-size:14px;font-weight:600;line-height:1.35;overflow-wrap:break-word;min-width:0}
+.insp-headline{display:flex;align-items:flex-start;gap:8px;margin-top:3px}
+.insp-headline .insp-title{flex:1}
+.insp-headline .speak{flex:none;width:28px;height:28px;margin-top:-2px}
+
+/* ---------- read aloud ---------- */
+.speak .stop{display:none}
+.speak.talking .play{display:none}
+.speak.talking .stop{display:block}
+.speak.talking{color:var(--accent);background:var(--accent-soft)}
+.speak svg{width:15px;height:15px}
+.note-tools .speak svg{width:12px;height:12px}
+.speak[hidden]{display:none}
+
+/* the box being read gets a quiet pulse so you can see where you are */
+.node.talking{box-shadow:0 0 0 2px var(--paper), 0 0 0 4px var(--accent), var(--node-shadow)}
+.node.talking::after{
+  content:"";position:absolute;inset:-4px;border-radius:inherit;
+  border:2px solid var(--accent);opacity:.55;pointer-events:none;
+  animation:talkpulse 1.6s ease-out infinite;
+}
+@keyframes talkpulse{
+  0%{transform:scale(1);opacity:.5}
+  100%{transform:scale(1.14);opacity:0}
+}
+@media (prefers-reduced-motion: reduce){ .node.talking::after{animation:none;opacity:.5} }
 .insp-body{padding:13px 14px;display:flex;flex-direction:column;gap:16px;overflow:auto}
 .field{display:flex;flex-direction:column;gap:8px}
 .field > label{
@@ -948,7 +973,13 @@ mark{
   <aside id="inspector" aria-label="Node inspector">
     <div class="insp-head">
       <div class="insp-kicker" id="insp-kicker">Node</div>
-      <div class="insp-title" id="insp-title"></div>
+      <div class="insp-headline">
+        <div class="insp-title" id="insp-title"></div>
+        <button class="btn ghost icon speak" id="speak-node" title="Read this box and its note aloud (P)">
+          <svg class="play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>
+          <svg class="stop" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+        </button>
+      </div>
     </div>
     <div class="insp-body">
       <div class="field">
@@ -977,6 +1008,10 @@ mark{
             <button class="nf" id="nf-italic" title="Italic (Ctrl+I)"><i>I</i></button>
             <button class="nf" id="nf-underline" title="Underline (Ctrl+U)"><u>U</u></button>
             <button class="nf" id="nf-highlight" title="Highlight (Ctrl+Shift+H)"><span class="hl">H</span></button>
+            <button class="nf speak" id="speak-note" title="Read the note aloud">
+              <svg class="play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>
+              <svg class="stop" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+            </button>
             <button class="nf" id="nf-clear" title="Remove styling">&#10005;</button>
           </span>
         </label>
@@ -1040,6 +1075,7 @@ mark{
           <li><span>Select all</span> <span class="kbd">Ctrl + A</span></li>
           <li><span>Find in board</span> <span class="kbd">Ctrl + F</span></li>
           <li><span>Read a box&rsquo;s note</span> <span class="kbd">hover it</span></li>
+          <li><span>Read it out loud</span> <span class="kbd">P</span></li>
           <li><span>Pan the canvas</span> <span class="kbd">Space + drag</span></li>
         </ul>
         <h4 style="margin-top:18px">View &amp; style</h4>
@@ -1612,6 +1648,7 @@ var canvas = $("#canvas"), world = $("#world");
    ============================================================ */
 function showHome(){
   commitEdit();
+  stopTalking();
   editorView.classList.remove("on");
   homeView.classList.add("on");
   board = null;
@@ -2184,6 +2221,7 @@ function startEdit(id){
   var e = index.get(id);
   if(!e) return;
   hideNote();
+  stopTalking();
   commitEdit();
   editingId = id; editingEl = e.el;
   e.el.classList.add("editing");
@@ -2516,6 +2554,7 @@ function buildSwatches(){
 }
 function syncInspector(){
   var insp = $("#inspector");
+  if(talkingId && talkingId !== sel) stopTalking();
   var e = sel ? index.get(sel) : null;
   if(!e){ insp.classList.remove("on"); return; }
   insp.classList.add("on");
@@ -2556,6 +2595,117 @@ function syncInspector(){
 var spaceDown = false;
 var panning = null;
 var draggingEl = null, dragState = null;
+
+/* ============================================================
+   Reading a box out loud
+   ------------------------------------------------------------
+   Uses the voices already on this computer, so it costs nothing,
+   needs no key and works with the internet off.
+
+   Two wrinkles are worked around here. Chrome stops speaking
+   after roughly fifteen seconds, so the words go out in short
+   pieces split at sentence ends, with a nudge on a timer to keep
+   the queue moving. And the list of voices arrives late, so the
+   chosen voice is looked up each time rather than cached at
+   start-up.
+   ============================================================ */
+var speech = window.speechSynthesis || null;
+var talkingId = null;      /* the box being read */
+var talkKeepAlive = null;
+
+function speechReady(){ return !!(speech && typeof SpeechSynthesisUtterance === "function"); }
+
+function pickVoice(){
+  if(!speech) return null;
+  var voices = speech.getVoices() || [];
+  if(!voices.length) return null;
+  var want = (navigator.language || "en-US").toLowerCase();
+  var base = want.split("-")[0];
+  /* the user's exact language, then the same language anywhere, then whatever is default */
+  return voices.filter(function(v){ return v.lang && v.lang.toLowerCase() === want; })[0]
+      || voices.filter(function(v){ return v.lang && v.lang.toLowerCase().indexOf(base) === 0; })[0]
+      || voices.filter(function(v){ return v.default; })[0]
+      || voices[0];
+}
+
+/* short pieces, broken at sentence ends where possible */
+function speechChunks(text){
+  var out = [];
+  String(text).split(/\n+/).forEach(function(para){
+    var sentences = para.match(/[^.!?;:]+[.!?;:]*\s*/g) || (para.trim() ? [para] : []);
+    var buf = "";
+    sentences.forEach(function(s){
+      if((buf + s).length > 180 && buf){ out.push(buf.trim()); buf = s; }
+      else buf += s;
+    });
+    if(buf.trim()) out.push(buf.trim());
+  });
+  return out.filter(function(s){ return s.length; });
+}
+
+function stopTalking(){
+  clearInterval(talkKeepAlive);
+  talkKeepAlive = null;
+  if(speech){ try{ speech.cancel(); }catch(e){} }
+  if(talkingId){
+    var e = index.get(talkingId);
+    if(e) e.el.classList.remove("talking");
+  }
+  talkingId = null;
+  document.querySelectorAll(".speak.talking").forEach(function(b){ b.classList.remove("talking"); });
+}
+
+function speakText(text, btn, nodeId){
+  if(!speechReady()) return toast("This browser cannot read text aloud");
+  var words = mkPlain(text || "").replace(/\s+/g, " ").trim();
+  if(!words) return toast("Nothing to read here");
+
+  stopTalking();
+  var voice = pickVoice();
+  var chunks = speechChunks(words);
+  var left = chunks.length;
+
+  if(btn) btn.classList.add("talking");
+  if(nodeId){
+    talkingId = nodeId;
+    var e = index.get(nodeId);
+    if(e) e.el.classList.add("talking");
+  }
+
+  chunks.forEach(function(piece){
+    var u = new SpeechSynthesisUtterance(piece);
+    if(voice){ u.voice = voice; u.lang = voice.lang; }
+    u.rate = 1; u.pitch = 1;
+    u.onend = function(){ if(--left <= 0) stopTalking(); };
+    u.onerror = function(){ if(--left <= 0) stopTalking(); };
+    try{ speech.speak(u); }catch(err){ left--; }
+  });
+
+  /* Chrome goes quiet after about fifteen seconds unless nudged */
+  talkKeepAlive = setInterval(function(){
+    if(!speech || !speech.speaking){ return; }
+    try{ speech.pause(); speech.resume(); }catch(e){}
+  }, 9000);
+}
+
+/* what the play button on the header reads: the words, then the note */
+function speakSelected(){
+  var e = sel ? index.get(sel) : null;
+  if(!e) return;
+  var btn = $("#speak-node");
+  if(btn.classList.contains("talking")) return stopTalking();
+  var words = mkPlain(e.node.text || "").trim();
+  var note = mkPlain(e.node.note || "").trim();
+  var say = note ? (words ? words + ". " + note : note) : words;
+  speakText(say, btn, e.node.id);
+}
+function speakNote(){
+  var e = sel ? index.get(sel) : null;
+  if(!e) return;
+  var btn = $("#speak-note");
+  if(btn.classList.contains("talking")) return stopTalking();
+  speakText(e.node.note || "", btn, e.node.id);
+}
 
 /* ============================================================
    Hovering a box floats its note up
@@ -2921,6 +3071,7 @@ function isTyping(el){
 }
 document.addEventListener("keydown", function(ev){
   if(ev.key === "Escape"){
+    if(talkingId){ stopTalking(); return; }
     if($("#importer").classList.contains("on")){ closeImporter(); return; }
     if($("#sheet").classList.contains("on")){ $("#sheet").classList.remove("on"); return; }
     if(searchOpen()){ closeSearch(); return; }
@@ -3046,6 +3197,7 @@ document.addEventListener("keydown", function(ev){
     addTreeAt(p.x, p.y, "");
     return;
   }
+  if(k === "p"){ ev.preventDefault(); if(sel) speakSelected(); return; }
   if(k === "c"){ ev.preventDefault(); if(sel) toggleCollapse(sel); return; }
   if(k === "d"){ ev.preventDefault(); if(sel) detachSel(); return; }
 
@@ -3592,6 +3744,8 @@ noteEl.addEventListener("keydown", function(ev){
   btn.addEventListener("mousedown", function(ev){ ev.preventDefault(); });
   btn.addEventListener("click", function(){ applyFormat(p[1], noteEl); });
 });
+$("#speak-node").addEventListener("click", speakSelected);
+$("#speak-note").addEventListener("click", speakNote);
 $("#nf-clear").addEventListener("mousedown", function(ev){ ev.preventDefault(); });
 $("#nf-clear").addEventListener("click", function(){ clearFormat(noteEl); });
 Array.prototype.forEach.call($("#dir-seg").children, function(b){
@@ -3618,6 +3772,7 @@ window.addEventListener("blur", function(){
 });
 window.addEventListener("beforeunload", function(){
   commitEdit();
+  stopTalking();
   if(store.mode === "folder"){
     /* a normal fetch can be cut short by the closing tab, so hand the
        last unsaved boards to the browser to deliver on our behalf */
@@ -4497,6 +4652,10 @@ $("#imp-create").addEventListener("click", function(){
    Boot
    ============================================================ */
 buildSwatches();
+if(!speechReady()){
+  $("#speak-node").hidden = true;
+  $("#speak-note").hidden = true;
+}
 bootStorage();
 
 if(document.fonts && document.fonts.ready){
