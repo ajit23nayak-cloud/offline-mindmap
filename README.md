@@ -80,6 +80,19 @@ Note label reads just the note. `P` does the same from the keyboard, and the box
 being read pulses so you can see where you are. It uses the voices already on
 your computer, so it costs nothing and works with the internet off.
 
+Pick the voice and speed from the three-dot menu → **Reading voice**. Your choice
+is remembered in this browser.
+
+If the list only shows older robotic voices like *Microsoft David* or *Zira*,
+open Branchboard in **Microsoft Edge** instead. Edge adds hundreds of natural
+neural voices to the same list at no cost — they need an internet connection,
+but everything else in Branchboard still works offline. Windows can also install
+natural voices system-wide under Settings → Time & language → Speech.
+
+Most "read aloud" Chrome extensions will not help here: they read pages
+themselves rather than lending their voices to other pages. Only an extension
+that registers as a Chrome TTS engine would show up in the list.
+
 ---
 
 ## Keyboard
